@@ -1,0 +1,35 @@
+# Credenciais — NUNCA comitar
+.env
+
+# Banco de dados de produção
+*.db
+*.sqlite
+
+# Arquivos de runtime gerados pelo bot
+estado_*.txt
+*.log
+bot_run.log
+hello.log
+
+# Imagens geradas em runtime
+*.png
+DEBUG_*.png
+print_*.png
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Ambiente virtual
+venv/
+.venv/
+env/
+
+# IDEs
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
