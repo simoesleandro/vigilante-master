@@ -55,9 +55,13 @@ from web_panel import iniciar_servidor_web
 
 # ── Config ────────────────────────────────────────────────────────────────────
 TOKEN_TELEGRAM = os.getenv("TOKEN_TELEGRAM")
-ADMIN_ID = os.getenv("ADMIN_ID", "").strip().strip("[]") or None
+ADMIN_ID = os.getenv("ADMIN_ID", "").strip().strip("[]").strip('"').strip("'") or None
 _chats_raw = os.getenv("CHATS_ESPECTADORES", "").strip().strip("[]")
-CHATS_ESPECTADORES = [c.strip() for c in _chats_raw.split(",") if c.strip()]
+CHATS_ESPECTADORES = [
+    c.strip().strip('"').strip("'")
+    for c in _chats_raw.split(",")
+    if c.strip().strip('"').strip("'")
+]
 
 
 def _notify_admin(bot, texto: str) -> None:
