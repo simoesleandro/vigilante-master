@@ -47,8 +47,12 @@ def carteiro_worker(bot: telebot.TeleBot, chats_espectadores: list) -> None:
             markup.row(btn_resumo, btn_ia)
             markup.row(btn_ctx, btn_reenviar)
 
+            tem_foto = bool(t['img'] and os.path.exists(t['img']))
+            if t['img'] and not tem_foto:
+                print(f"⚠️ Carteiro: foto esperada em '{t['img']}' mas arquivo não encontrado — enviando sem foto.")
+
             for chat in chats_espectadores:
-                if t['img'] and os.path.exists(t['img']):
+                if tem_foto:
                     with open(t['img'], 'rb') as f:
                         bot.send_photo(chat, f, caption=texto_html, parse_mode="HTML", reply_markup=markup)
                 else:
