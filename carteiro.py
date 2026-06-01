@@ -40,8 +40,9 @@ def carteiro_worker(bot: telebot.TeleBot, chats_espectadores: list) -> None:
             btn_resumo = InlineKeyboardButton("📖 Resumo", callback_data=f"resumo|{p['id']}")
             btn_ia = InlineKeyboardButton("🧠 Análise IA", callback_data=f"ia|{p['id']}")
             btn_ctx = InlineKeyboardButton("🗣️ Add Contexto", callback_data=f"ctx|{p['id']}")
+            btn_reenviar = InlineKeyboardButton("📤 Reenviar", callback_data=f"reenviar|{p['id']}")
             markup.row(btn_resumo, btn_ia)
-            markup.row(btn_ctx)
+            markup.row(btn_ctx, btn_reenviar)
 
             for chat in chats_espectadores:
                 if t['img'] and os.path.exists(t['img']):

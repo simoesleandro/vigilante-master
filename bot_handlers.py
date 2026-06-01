@@ -4,6 +4,7 @@ import time
 import telebot
 
 from analisador import AnalisadorJuridico
+from carteiro import fila_saida
 from repo import ProcessoRepo
 
 
@@ -77,6 +78,23 @@ def register_handlers(
             texto += f"   Número: <code>{r[2]}</code>\n"
             texto += f"   Classe: {r[3]}\n\n"
         bot.send_message(message.chat.id, texto, parse_mode="HTML")
+
+    def reenviar_notificacao(message, pid: str) -> None:
+        proc = repo.get_processo(pid)
+        if not proc:
+            bot.send_message(message.chat.id, f"❌ ID {pid} não encontrado no banco de dados.")
+            return
+        andamento = proc.get("ultimo_andamento")
+        if not andamento:
+            bot.send_message(message.chat.id, f"⚠️ {pid} ainda não tem andamentos registrados.")
+            return
+        fila_saida.put({
+            "tribunal": proc["tribunal"],
+            "conteudo": andamento,
+            "proc": proc,
+            "img": None,
+        })
+        bot.send_message(message.chat.id, f"📤 Reenvio de <b>{pid}</b> enfileirado.", parse_mode="HTML")
 
     def remover_processo(message, pid: str) -> None:
         if not repo.pid_exists(pid):
@@ -249,6 +267,9 @@ def register_handlers(
                 )
                 threading.Thread(target=tarefa_ia_resumo, args=(call.message, pid, proc)).start()
 
+            elif acao == "reenviar":
+                reenviar_notificacao(call.message, pid)
+
             elif acao == "ctx":
                 msg_pergunta = bot.send_message(
                     call.message.chat.id,
@@ -261,7 +282,7 @@ def register_handlers(
         except Exception as e:
             print(f"⚠️ Erro ao processar clique: {e}")
 
-    @bot.message_handler(commands=['resumo', 'ia', 'listar', 'remover', 'adicionar'])
+    @bot.message_handler(commands=['resumo', 'ia', 'listar', 'remover', 'adicionar', 'reenviar'])
     def comandos_digitados(message) -> None:
         if not _autorizado(message.chat.id):
             return
@@ -285,6 +306,10 @@ def register_handlers(
 
             if "/remover" in comando:
                 remover_processo(message, pid)
+                return
+
+            if "/reenviar" in comando:
+                reenviar_notificacao(message, pid)
                 return
 
             proc = repo.get_processo(pid)
