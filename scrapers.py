@@ -18,7 +18,7 @@ def exterminar_zumbis():
             'powershell -Command "'
             'Get-CimInstance Win32_Process -Filter \\"name = \'chrome.exe\'\\" | '
             'Where-Object {$_.CommandLine -like \'*--remote-debugging-port*\' -or $_.CommandLine -like \'*--headless*\'} | '
-            'ForEach-Object {Stop-Process $_.ProcessId -Force}'
+            'ForEach-Object {Stop-Process $_.ProcessId -Force -ErrorAction SilentlyContinue}'
             '"'
         )
         os.system(cmd_ps)
