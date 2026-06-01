@@ -1,4 +1,5 @@
 import logging
+import os
 
 from flask import Flask, Response, render_template_string
 
@@ -139,4 +140,5 @@ def stream():
 
 
 def iniciar_servidor_web():
-    app.run(host='0.0.0.0', port=8080, debug=False, use_reloader=False)
+    port = int(os.getenv("FLASK_PORT", "8080"))
+    app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
