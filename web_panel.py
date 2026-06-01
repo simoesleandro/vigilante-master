@@ -141,4 +141,5 @@ def stream():
 
 def iniciar_servidor_web():
     port = int(os.getenv("FLASK_PORT", "8080"))
+    print(f"🌐 Painel Web disponível em: http://localhost:{port}")
     app.run(host='127.0.0.1', port=port, debug=False, use_reloader=False)
