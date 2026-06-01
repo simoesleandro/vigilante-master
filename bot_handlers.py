@@ -1,3 +1,4 @@
+import os
 import threading
 import time
 
@@ -88,11 +89,12 @@ def register_handlers(
         if not andamento:
             bot.send_message(message.chat.id, f"⚠️ {pid} ainda não tem andamentos registrados.")
             return
+        img_path = f"print_{pid}.png"
         fila_saida.put({
             "tribunal": proc["tribunal"],
             "conteudo": andamento,
             "proc": proc,
-            "img": None,
+            "img": img_path if os.path.exists(img_path) else None,
         })
         bot.send_message(message.chat.id, f"📤 Reenvio de <b>{pid}</b> enfileirado.", parse_mode="HTML")
 
