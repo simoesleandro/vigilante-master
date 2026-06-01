@@ -19,10 +19,13 @@ def carteiro_worker(bot: telebot.TeleBot, chats_espectadores: list) -> None:
             agora = time.strftime('%d/%m/%Y %H:%M')
 
             texto_bruto = t['conteudo']
-            if len(texto_bruto) > 250:
-                texto_bruto = texto_bruto[:250] + "...\n<i>[Texto cortado. Use os botões abaixo]</i>"
+            truncado = len(texto_bruto) > 250
+            if truncado:
+                texto_bruto = texto_bruto[:250] + "..."
 
             texto_extraido_seguro = html.escape(texto_bruto)
+            if truncado:
+                texto_extraido_seguro += "\n<i>[Texto cortado — use os botões abaixo]</i>"
 
             texto_html = (
                 f"🏛 <b>NOVA MOVIMENTAÇÃO DETECTADA</b>\n"
