@@ -80,10 +80,19 @@ _SEED_PROCESSOS = [
 class ProcessoRepo:
     def __init__(self, db_path: str = "memoria_vigilante.db"):
         self._db_path = db_path
+        # :memory: creates a new independent DB per connection, so we keep one alive
+        self._mem_conn = (
+            sqlite3.connect(':memory:', check_same_thread=False)
+            if db_path == ':memory:' else None
+        )
         self._inicializar_banco()
 
     def _conn(self) -> sqlite3.Connection:
-        return sqlite3.connect(self._db_path)
+        return self._mem_conn if self._mem_conn is not None else sqlite3.connect(self._db_path)
+
+    def _close(self, conn: sqlite3.Connection) -> None:
+        if self._mem_conn is None:
+            conn.close()
 
     def _inicializar_banco(self) -> None:
         try:
@@ -135,7 +144,7 @@ class ProcessoRepo:
                 conn.commit()
                 print("✅ Todos os processos migrados com sucesso!")
 
-            conn.close()
+            self._close(conn)
         except Exception as e:
             print(f"❌ Erro crítico ao inicializar o banco: {e}")
 
@@ -149,7 +158,7 @@ class ProcessoRepo:
                 (pid,),
             )
             row = cursor.fetchone()
-            conn.close()
+            self._close(conn)
             if row:
                 return {
                     "id": row[0], "numero": row[1], "url": row[2], "tribunal": row[3],
@@ -176,7 +185,7 @@ class ProcessoRepo:
                     "parte_label": row[3], "parte_nome": row[4], "classe": row[5],
                     "resumo": row[6], "ultimo_andamento": row[7],
                 })
-            conn.close()
+            self._close(conn)
         except Exception as e:
             print(f"❌ Erro ao buscar do {tribunal}: {e}")
         return lista
@@ -190,7 +199,7 @@ class ProcessoRepo:
                 "SELECT pid, tribunal, numero, classe FROM processos ORDER BY tribunal, pid"
             )
             lista = cursor.fetchall()
-            conn.close()
+            self._close(conn)
         except Exception as e:
             print(f"❌ Erro ao listar processos: {e}")
         return lista
@@ -203,7 +212,7 @@ class ProcessoRepo:
                 "UPDATE processos SET ultimo_andamento = ? WHERE pid = ?", (txt, pid)
             )
             conn.commit()
-            conn.close()
+            self._close(conn)
         except Exception as e:
             print(f"❌ Erro ao salvar andamento de {pid}: {e}")
 
@@ -215,7 +224,7 @@ class ProcessoRepo:
                 "UPDATE processos SET resumo_inicial = ? WHERE pid = ?", (resumo, pid)
             )
             conn.commit()
-            conn.close()
+            self._close(conn)
         except Exception as e:
             print(f"❌ Erro ao salvar resumo de {pid}: {e}")
 
@@ -225,7 +234,7 @@ class ProcessoRepo:
             cursor = conn.cursor()
             cursor.execute("SELECT pid FROM processos WHERE pid = ?", (pid,))
             existe = cursor.fetchone() is not None
-            conn.close()
+            self._close(conn)
             return existe
         except Exception as e:
             print(f"❌ Erro ao verificar ID {pid}: {e}")
@@ -252,7 +261,7 @@ class ProcessoRepo:
                 (pid, numero, url, tribunal, parte_label, parte_nome, classe, resumo),
             )
             conn.commit()
-            conn.close()
+            self._close(conn)
         except Exception as e:
             print(f"❌ Erro ao inserir processo {pid}: {e}")
 
@@ -263,7 +272,7 @@ class ProcessoRepo:
             cursor.execute("DELETE FROM processos WHERE pid = ?", (pid,))
             cursor.execute("DELETE FROM historico_contexto WHERE pid = ?", (pid,))
             conn.commit()
-            conn.close()
+            self._close(conn)
         except Exception as e:
             print(f"❌ Erro ao remover processo {pid}: {e}")
 
@@ -276,7 +285,7 @@ class ProcessoRepo:
                 (pid, data_hora, texto),
             )
             conn.commit()
-            conn.close()
+            self._close(conn)
         except Exception as e:
             print(f"❌ Erro ao salvar contexto de {pid}: {e}")
 
@@ -289,7 +298,7 @@ class ProcessoRepo:
                 (pid,),
             )
             registros = cursor.fetchall()
-            conn.close()
+            self._close(conn)
             return registros
         except Exception as e:
             print(f"❌ Erro ao ler histórico de {pid}: {e}")

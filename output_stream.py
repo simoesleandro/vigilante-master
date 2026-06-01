@@ -1,6 +1,9 @@
 import queue
 import sys
 
+sys.__stdout__.reconfigure(encoding='utf-8', write_through=True)
+sys.__stderr__.reconfigure(encoding='utf-8', write_through=True)
+
 fila_web: queue.Queue = queue.Queue()
 
 

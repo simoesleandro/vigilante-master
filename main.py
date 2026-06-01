@@ -8,11 +8,10 @@ import time
 import traceback
 
 import certifi
+from output_stream import ativar as _ativar_stream
+_ativar_stream()
 
-# ── Encoding e SSL patches ── devem rodar antes de qualquer import de rede ──
-sys.__stdout__.reconfigure(encoding='utf-8', write_through=True)
-sys.__stderr__.reconfigure(encoding='utf-8', write_through=True)
-
+# ── SSL patches ── devem rodar antes de qualquer import de rede ─────────────
 _original_load_verify = ssl.SSLContext.load_verify_locations
 
 def _patched_load_verify(self, cafile=None, capath=None, cadata=None):
@@ -41,9 +40,6 @@ from playwright.sync_api import sync_playwright
 telebot.logger.setLevel(logging.CRITICAL)
 
 # ── Project modules ───────────────────────────────────────────────────────────
-from output_stream import ativar as _ativar_stream
-_ativar_stream()
-
 from analisador import AnalisadorJuridico
 from bot_handlers import register_handlers
 from carteiro import carteiro_worker, fila_saida
