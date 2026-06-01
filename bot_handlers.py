@@ -298,8 +298,21 @@ def register_handlers(
                 iniciar_cadastro(message)
                 return
 
+            if "/reenviar" in comando and len(partes) < 2:
+                rows = repo.list_todos()
+                if not rows:
+                    bot.send_message(message.chat.id, "📭 Nenhum processo cadastrado.")
+                    return
+                texto = "📤 <b>Reenviar notificação — escolha o ID:</b>\n\n"
+                for r in rows:
+                    andamento = repo.get_processo(r[0]).get("ultimo_andamento")
+                    status = "✅ tem andamento" if andamento else "⚠️ sem andamento"
+                    texto += f"🔹 <code>/reenviar {r[0]}</code> ({r[1]}) — {status}\n"
+                bot.send_message(message.chat.id, texto, parse_mode="HTML")
+                return
+
             if len(partes) < 2:
-                bot.reply_to(message, "⚠️ Use: /resumo ID, /ia ID ou /remover ID")
+                bot.reply_to(message, "⚠️ Use: /resumo ID, /ia ID, /reenviar ID ou /remover ID")
                 return
 
             pid = partes[1].upper()
