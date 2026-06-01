@@ -124,9 +124,19 @@ def iniciar_vigilancia():
     threading.Thread(
         target=carteiro_worker, args=(bot, CHATS_ESPECTADORES), daemon=True
     ).start()
-    threading.Thread(
-        target=lambda: bot.infinity_polling(skip_pending=True), daemon=True
-    ).start()
+    def _run_polling():
+        while True:
+            try:
+                bot.infinity_polling(skip_pending=True)
+            except Exception as e:
+                if "409" in str(e):
+                    print("⚠️ Conflito de instância (409) — aguardando 30s para reconectar...")
+                    time.sleep(30)
+                else:
+                    print(f"⚠️ Polling encerrado: {e}")
+                    break
+
+    threading.Thread(target=_run_polling, daemon=True).start()
     threading.Thread(target=iniciar_servidor_web, daemon=True).start()
 
     cnt = 0
