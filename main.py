@@ -55,9 +55,18 @@ from web_panel import iniciar_servidor_web
 
 # ── Config ────────────────────────────────────────────────────────────────────
 TOKEN_TELEGRAM = os.getenv("TOKEN_TELEGRAM")
-ADMIN_ID = os.getenv("ADMIN_ID", "").strip().strip("[]")
+ADMIN_ID = os.getenv("ADMIN_ID", "").strip().strip("[]") or None
 _chats_raw = os.getenv("CHATS_ESPECTADORES", "").strip().strip("[]")
 CHATS_ESPECTADORES = [c.strip() for c in _chats_raw.split(",") if c.strip()]
+
+
+def _notify_admin(bot, texto: str) -> None:
+    if not ADMIN_ID:
+        return
+    try:
+        bot.send_message(ADMIN_ID, texto, parse_mode="HTML")
+    except Exception as e:
+        print(f"❌ Erro ao notificar admin: {e}")
 API_KEY_GEMINI = os.getenv("API_KEY_GEMINI")
 
 
@@ -80,10 +89,7 @@ def _despachar(detector, repo, bot, analisador, proc, tribunal, txt, img):
                 f"{detector.limite_alerta} ciclos consecutivos.\n"
                 f"O layout do site pode ter mudado ou o serviço está instável."
             )
-            try:
-                bot.send_message(ADMIN_ID, msg, parse_mode="HTML")
-            except Exception:
-                pass
+            _notify_admin(bot, msg)
         return
 
     if isinstance(resultado, AndamentoInicial):
@@ -113,14 +119,7 @@ def iniciar_vigilancia():
 
     register_handlers(bot, repo, analisador_ia, CHATS_ESPECTADORES)
 
-    try:
-        bot.send_message(
-            ADMIN_ID,
-            "🚀 <b>Vigilante Master v14.0 Online!</b>\nBanco de Dados, IA Evolutiva e Painel Web Ativados.",
-            parse_mode="HTML",
-        )
-    except Exception:
-        pass
+    _notify_admin(bot, "🚀 <b>Vigilante Master v14.0 Online!</b>\nBanco de Dados, IA Evolutiva e Painel Web Ativados.")
 
     threading.Thread(
         target=carteiro_worker, args=(bot, CHATS_ESPECTADORES), daemon=True
@@ -153,7 +152,7 @@ def iniciar_vigilancia():
                 for pr in lista:
                     t, i = extrair_tse_stealth(
                         pr['id'], pr['url'], pr['numero'],
-                        on_captcha=lambda n, b=_bot: b.send_message(ADMIN_ID, f"🔑 Resolva TSE: {n}"),
+                        on_captcha=lambda n, b=_bot: _notify_admin(b, f"🔑 Resolva TSE: {n}"),
                     )
                     _despachar(_det, _repo, _bot, _ia, pr, "TSE", t, i)
                     time.sleep(5)
@@ -181,9 +180,10 @@ if __name__ == "__main__":
             f"<code>{html.escape(erro_trace_curto)}</code>\n\n"
             "⚠️ <i>Acesse a VM para reiniciar o sistema.</i>"
         )
-        try:
-            _emergency_bot = telebot.TeleBot(TOKEN_TELEGRAM)
-            _emergency_bot.send_message(ADMIN_ID, mensagem_alerta, parse_mode="HTML")
-            print("🚨 Alerta de CRASH enviado com sucesso para o Telegram!")
-        except Exception as e_telegram:
-            print(f"❌ Falha fatal ao avisar no Telegram. Erro: {e_telegram}")
+        if ADMIN_ID:
+            try:
+                _emergency_bot = telebot.TeleBot(TOKEN_TELEGRAM)
+                _emergency_bot.send_message(ADMIN_ID, mensagem_alerta, parse_mode="HTML")
+                print("🚨 Alerta de CRASH enviado com sucesso para o Telegram!")
+            except Exception as e_telegram:
+                print(f"❌ Falha fatal ao avisar no Telegram. Erro: {e_telegram}")
