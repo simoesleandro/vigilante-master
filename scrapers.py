@@ -141,7 +141,8 @@ def extrair_stf_stealth(
             try:
                 driver.get(url)
             except Exception as timeout_err:
-                print(f'   ⚠️ Timeout parcial ao carregar {id_nome}: {timeout_err}')
+                print(f'   ⚠️ Timeout ao carregar {id_nome}: {timeout_err}')
+                return None, None
             time.sleep(10)
 
             try:
