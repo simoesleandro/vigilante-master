@@ -8,8 +8,16 @@ echo.
 :: Caminho atualizado para a sua pasta do OneDrive Desktop
 set PASTA_PROJETO=C:\Users\Leand\OneDrive\Desktop\vigilante
 
-echo [*] AGUARDANDO CRITICO: Dando 30 segundos para o Windows estabilizar a rede e os servicos...
-timeout /t 30
+echo [*] LIMPANDO PROCESSOS OCULTOS ANTIGOS...
+taskkill /f /im chrome.exe >nul 2>&1
+taskkill /f /im chromedriver.exe >nul 2>&1
+taskkill /f /im python.exe /fi "WINDOWTITLE ne %CmdCmdLine%" >nul 2>&1
+
+echo [*] LIMPANDO ARQUIVOS TEMPORARIOS DO CHROME (LIBERANDO ESPACO)...
+powershell -Command "Remove-Item -Path $env:TEMP\tmp* -Recurse -Force -ErrorAction SilentlyContinue; Remove-Item -Path $env:TEMP\scoped_dir* -Recurse -Force -ErrorAction SilentlyContinue"
+
+echo [*] AGUARDANDO ESTABILIZACAO DA REDE (10 segundos)...
+timeout /t 10
 
 echo [*] Navegando ate a pasta do projeto...
 cd /d "%PASTA_PROJETO%"
