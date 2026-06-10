@@ -29,7 +29,7 @@ echo.
 
 :loop
 :: Executa o main.py usando o executável interno da nova venv estável
-"%PASTA_PROJETO%\venv\Scripts\python.exe" -u main.py > terminal.log 2>&1
+powershell -Command "\"%PASTA_PROJETO%\venv\Scripts\python.exe\" -u main.py | Out-File -FilePath .\terminal.log -Encoding utf8 -Append"
 
 echo.
 echo [!] Script finalizado ou interrompido. Reiniciando em 10 segundos...
