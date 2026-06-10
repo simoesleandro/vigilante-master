@@ -1,5 +1,6 @@
 import queue
 import sys
+import os
 
 sys.__stdout__.reconfigure(encoding='utf-8', write_through=True)
 sys.__stderr__.reconfigure(encoding='utf-8', write_through=True)
@@ -8,12 +9,17 @@ fila_web: queue.Queue = queue.Queue()
 
 
 class CloneTerminal:
-    def __init__(self):
-        self.terminal_original = sys.__stdout__
+    def __init__(self, terminal_original):
+        self.terminal_original = terminal_original
 
     def write(self, mensagem):
         self.terminal_original.write(mensagem)
         self.terminal_original.flush()
+        try:
+            with open("terminal.log", "a", encoding="utf-8") as f:
+                f.write(mensagem)
+        except Exception:
+            pass
         if mensagem.strip():
             msg_segura = mensagem.replace('\n', '').replace('\r', '')
             fila_web.put(msg_segura)
@@ -23,4 +29,5 @@ class CloneTerminal:
 
 
 def ativar():
-    sys.stdout = CloneTerminal()
+    sys.stdout = CloneTerminal(sys.__stdout__)
+    sys.stderr = CloneTerminal(sys.__stderr__)
