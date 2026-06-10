@@ -16,10 +16,15 @@ class CloneTerminal:
         self.terminal_original.write(mensagem)
         self.terminal_original.flush()
         try:
-            with open("terminal.log", "a", encoding="utf-8") as f:
+            caminho_log = "Z:\\terminal.log" if os.path.exists("Z:\\") else "terminal.log"
+            with open(caminho_log, "a", encoding="utf-8") as f:
                 f.write(mensagem)
         except Exception:
-            pass
+            try:
+                with open("terminal.log", "a", encoding="utf-8") as f:
+                    f.write(mensagem)
+            except Exception:
+                pass
         if mensagem.strip():
             msg_segura = mensagem.replace('\n', '').replace('\r', '')
             fila_web.put(msg_segura)
