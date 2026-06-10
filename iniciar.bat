@@ -29,7 +29,7 @@ echo.
 
 :loop
 :: Executa o main.py usando o executável interno da nova venv estável
-powershell -Command "& '%PASTA_PROJETO%\venv\Scripts\python.exe' -u main.py | Tee-Object -FilePath .\terminal.log -Append"
+powershell -Command "& '%PASTA_PROJETO%\venv\Scripts\python.exe' -u main.py | ForEach-Object { $_; Add-Content -Path .\terminal.log -Value $_ -Encoding UTF8 }"
 
 echo.
 echo [!] Script finalizado ou interrompido. Reiniciando em 10 segundos...
