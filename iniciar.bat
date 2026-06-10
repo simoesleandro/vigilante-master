@@ -29,7 +29,7 @@ echo.
 
 :loop
 :: Executa o main.py usando o executável interno da nova venv estável
-"%PASTA_PROJETO%\venv\Scripts\python.exe" -u main.py
+"%PASTA_PROJETO%\venv\Scripts\python.exe" -u main.py > terminal.log 2>&1
 
 echo.
 echo [!] Script finalizado ou interrompido. Reiniciando em 10 segundos...
