@@ -27,9 +27,11 @@ echo 🔥 DISPARANDO MOTOR PRINCIPAL NATIVO (MAIN.PY)
 echo ====================================================================
 echo.
 
+:loop
 :: Executa o main.py usando o executável interno da nova venv estável
 "%PASTA_PROJETO%\venv\Scripts\python.exe" -u main.py
 
 echo.
-echo [!] Script finalizado ou interrompido.
-pause
+echo [!] Script finalizado ou interrompido. Reiniciando em 10 segundos...
+timeout /t 10
+goto loop

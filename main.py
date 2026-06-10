@@ -74,6 +74,30 @@ def _notify_admin(bot, texto: str) -> None:
 API_KEY_GEMINI = os.getenv("API_KEY_GEMINI")
 
 
+# ── Watchdog Liveness Monitor ────────────────────────────────────────────────
+ULTIMA_ATIVIDADE = time.time()
+
+def watchdog_worker(bot):
+    global ULTIMA_ATIVIDADE
+    limite_inatividade = 600  # 10 minutos
+    while True:
+        time.sleep(60)
+        inatividade = time.time() - ULTIMA_ATIVIDADE
+        if inatividade > limite_inatividade:
+            msg = (
+                "🚨 <b>VIGILANTE MASTER DETECTOU ANOMALIA!</b> 🚨\n\n"
+                f"O ciclo de monitoramento está congelado/inativo há {int(inatividade // 60)} minutos.\n"
+                "Iniciando reinicialização automática do sistema..."
+            )
+            print(f"🚨 [WATCHDOG] Inatividade crítica de {int(inatividade)} segundos. Notificando e reiniciando...")
+            try:
+                _emergency_bot = telebot.TeleBot(TOKEN_TELEGRAM)
+                _emergency_bot.send_message(ADMIN_ID, msg, parse_mode="HTML")
+            except Exception as e_tele:
+                print(f"❌ Erro no envio do alerta emergencial: {e_tele}")
+            os._exit(1)
+
+
 # ── Orchestration ─────────────────────────────────────────────────────────────
 
 def _despachar(detector, repo, bot, analisador, proc, tribunal, txt, img):
@@ -125,6 +149,9 @@ def iniciar_vigilancia():
 
     _notify_admin(bot, "🚀 <b>Vigilante Master v14.0 Online!</b>\nBanco de Dados, IA Evolutiva e Painel Web Ativados.")
 
+    # Inicia o monitor de inatividade (watchdog)
+    threading.Thread(target=watchdog_worker, args=(bot,), daemon=True).start()
+
     threading.Thread(
         target=carteiro_worker, args=(bot, CHATS_ESPECTADORES), daemon=True
     ).start()
@@ -145,6 +172,8 @@ def iniciar_vigilancia():
 
     cnt = 0
     while True:
+        global ULTIMA_ATIVIDADE
+        ULTIMA_ATIVIDADE = time.time()
         print(f"\n--- CICLO #{cnt} | {time.strftime('%H:%M:%S')} ---")
         exterminar_zumbis()
 
@@ -176,6 +205,7 @@ def iniciar_vigilancia():
             threading.Thread(target=rodar_tse, args=(processos_tse,), daemon=True).start()
 
         print("✅ Ciclo finalizado. Dormindo 2 min...")
+        ULTIMA_ATIVIDADE = time.time()
         time.sleep(120)
         cnt += 1
 
