@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul
 title Vigilante Master v14.0 - LOCAL CORE
 echo ====================================================================
 echo    HERMES AGENT: INICIALIZADOR LOCAL AUTOMATICO
