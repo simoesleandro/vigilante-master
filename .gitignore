@@ -13,6 +13,7 @@ hello.log
 
 # Imagens geradas em runtime
 *.png
+!docs/screenshot.png
 DEBUG_*.png
 print_*.png
 
