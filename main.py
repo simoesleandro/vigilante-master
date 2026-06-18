@@ -152,14 +152,20 @@ def iniciar_vigilancia():
         processos_stf = repo.list_processos("STF")
         processos_tse = repo.list_processos("TSE")
 
-        with sync_playwright() as p:
-            for pr in processos_tjrj:
-                t, i = extrair_playwright(p, pr['id'], pr['url'])
-                _despachar(detector, repo, bot, analisador_ia, pr, "TJRJ", t, i)
+        try:
+            with sync_playwright() as p:
+                for pr in processos_tjrj:
+                    t, i = extrair_playwright(p, pr['id'], pr['url'])
+                    _despachar(detector, repo, bot, analisador_ia, pr, "TJRJ", t, i)
+        except Exception as e:
+            print(f"   ⚠️ Ciclo TJRJ abortado, seguindo: {e}")
 
-        for pr in processos_stf:
-            t, i = extrair_stf_stealth(pr['id'], pr['url'])
-            _despachar(detector, repo, bot, analisador_ia, pr, "STF", t, i)
+        try:
+            for pr in processos_stf:
+                t, i = extrair_stf_stealth(pr['id'], pr['url'])
+                _despachar(detector, repo, bot, analisador_ia, pr, "STF", t, i)
+        except Exception as e:
+            print(f"   ⚠️ Ciclo STF abortado, seguindo: {e}")
 
         if cnt % 10 == 0:
             def rodar_tse(lista, _bot=bot, _det=detector, _repo=repo, _ia=analisador_ia):

@@ -34,27 +34,30 @@ def extrair_playwright(
 ) -> Tuple[Optional[str], Optional[str]]:
     with lock_navegador:
         print(f"   📡 {id_nome}: Acessando TJRJ...")
-        nav = p_instance.chromium.launch(
-            headless=False,
-            args=[
-                '--headless=new', '--disable-gpu', '--window-size=1920,1080',
-                '--disable-blink-features=AutomationControlled',
-            ],
-        )
-        ctx = nav.new_context(
-            viewport={'width': 1280, 'height': 1200},
-            user_agent=(
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-                'AppleWebKit/537.36 (KHTML, like Gecko) '
-                'Chrome/124.0.0.0 Safari/537.36'
-            ),
-        )
-        ctx.add_init_script(
-            "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
-        )
-        pag = ctx.new_page()
 
+        nav = None
+        pag = None
         try:
+            nav = p_instance.chromium.launch(
+                headless=False,
+                args=[
+                    '--headless=new', '--disable-gpu', '--window-size=1920,1080',
+                    '--disable-blink-features=AutomationControlled',
+                ],
+            )
+            ctx = nav.new_context(
+                viewport={'width': 1280, 'height': 1200},
+                user_agent=(
+                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                    'AppleWebKit/537.36 (KHTML, like Gecko) '
+                    'Chrome/124.0.0.0 Safari/537.36'
+                ),
+            )
+            ctx.add_init_script(
+                "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
+            )
+            pag = ctx.new_page()
+
             pag.goto(url, timeout=60000, wait_until='domcontentloaded')
             tabela = pag.locator("table:has(th:has-text('Data'))").first
             pag.wait_for_timeout(2000)
@@ -74,15 +77,20 @@ def extrair_playwright(
 
         except Exception as e:
             print(f'   ❌ Erro ao extrair {id_nome}: {e}')
-            try:
-                pasta_atual = os.path.dirname(os.path.abspath(__file__))
-                caminho_erro = os.path.join(pasta_atual, f'DEBUG_ERRO_{id_nome}.png')
-                pag.screenshot(path=caminho_erro, full_page=True)
-            except Exception:
-                pass
+            if pag is not None:
+                try:
+                    pasta_atual = os.path.dirname(os.path.abspath(__file__))
+                    caminho_erro = os.path.join(pasta_atual, f'DEBUG_ERRO_{id_nome}.png')
+                    pag.screenshot(path=caminho_erro, full_page=True)
+                except Exception:
+                    pass
             return None, None
         finally:
-            nav.close()
+            if nav is not None:
+                try:
+                    nav.close()
+                except Exception:
+                    pass
 
 
 def extrair_stf_stealth(
