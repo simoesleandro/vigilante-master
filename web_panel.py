@@ -1,5 +1,6 @@
 import logging
 import os
+import queue
 
 from flask import Flask, Response, render_template_string
 
@@ -77,6 +78,11 @@ _HTML_HACKER = """
         const painel = document.getElementById('painel-logs');
         const evento = new EventSource('/stream');
         let filaDigitacao = Promise.resolve();
+        let heartbeatRecebido = false;
+
+        evento.addEventListener('heartbeat', function(e) {
+            heartbeatRecebido = true;
+        });
 
         function digitarTexto(elemento, htmlCompleto, velocidade = 10) {
             return new Promise(resolve => {
@@ -134,12 +140,15 @@ def index():
 def stream():
     def gerar_eventos():
         while True:
-            msg = fila_web.get()
-            yield f"data: {msg}\n\n"
+            try:
+                msg = fila_web.get(timeout=15)
+                yield f"data: {msg}\n\n"
+            except queue.Empty:
+                yield ": heartbeat\n\n"
     return Response(gerar_eventos(), mimetype='text/event-stream')
 
 
 def iniciar_servidor_web():
     port = int(os.getenv("FLASK_PORT", "8080"))
     print(f"🌐 Painel Web disponível em: http://localhost:{port}")
-    app.run(host='127.0.0.1', port=port, debug=False, use_reloader=False)
+    app.run(host='127.0.0.1', port=port, debug=False, use_reloader=False, threaded=True)

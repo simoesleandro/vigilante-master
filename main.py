@@ -1,6 +1,7 @@
 import html
 import logging
 import os
+import shutil
 import ssl
 import sys
 import threading
@@ -57,6 +58,8 @@ from web_panel import iniciar_servidor_web
 TOKEN_TELEGRAM = os.getenv("TOKEN_TELEGRAM")
 ADMIN_ID = os.getenv("ADMIN_ID", "").strip().strip("[]").strip('"').strip("'") or None
 _chats_raw = os.getenv("CHATS_ESPECTADORES", "").strip().strip("[]")
+
+DISCO_MIN_GB = float(os.getenv("DISCO_MIN_GB", "2"))
 CHATS_ESPECTADORES = [
     c.strip().strip('"').strip("'")
     for c in _chats_raw.split(",")
@@ -72,6 +75,27 @@ def _notify_admin(bot, texto: str) -> None:
     except Exception as e:
         print(f"❌ Erro ao notificar admin: {e}")
 API_KEY_GEMINI = os.getenv("API_KEY_GEMINI")
+
+
+# ── Disk space guard ────────────────────────────────────────────────────────
+
+def _checar_espaco_disco(bot) -> bool:
+    try:
+        uso = shutil.disk_usage(os.getcwd())
+        gb_livre = uso.free / (1024 ** 3)
+        if gb_livre < DISCO_MIN_GB:
+            msg = (
+                f"🪫 <b>DISCO CRÍTICO!</b>\n\n"
+                f"Espaço livre: <b>{gb_livre:.1f} GB</b> (mínimo configurado: {DISCO_MIN_GB} GB)\n"
+                f"O ciclo atual foi <b>abortado</b> para evitar corrupção de dados.\n\n"
+                f"Libere espaço na máquina do Leandro imediatamente."
+            )
+            print(f"\n🪫 DISCO CRÍTICO: apenas {gb_livre:.1f} GB livres. Ciclo abortado.")
+            _notify_admin(bot, msg)
+            return False
+    except Exception as e:
+        print(f"⚠️ Não foi possível verificar espaço em disco: {e}")
+    return True
 
 
 # ── Orchestration ─────────────────────────────────────────────────────────────
@@ -147,6 +171,12 @@ def iniciar_vigilancia():
     while True:
         print(f"\n--- CICLO #{cnt} | {time.strftime('%H:%M:%S')} ---")
         exterminar_zumbis()
+
+        if not _checar_espaco_disco(bot):
+            print("⏸️ Aguardando 5 min antes de nova verificação de disco...")
+            time.sleep(300)
+            cnt += 1
+            continue
 
         processos_tjrj = repo.list_processos("TJRJ")
         processos_stf = repo.list_processos("STF")
