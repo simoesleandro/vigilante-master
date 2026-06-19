@@ -1,3 +1,4 @@
+import glob
 import html
 import logging
 import os
@@ -98,6 +99,46 @@ def _checar_espaco_disco(bot) -> bool:
     return True
 
 
+# ── Temp cleanup ────────────────────────────────────────────────────────────
+
+_LIMPEZA_PADROES = [
+    "playwright_chromiumdev_profile-*",
+    "playwright-artifacts-*",
+    "chrome_drag*",
+]
+
+def _limpar_temp_playwright() -> None:
+    temp = os.environ.get("TEMP") or os.environ.get("TMP") or ""
+    if not temp or not os.path.isdir(temp):
+        return
+    removidos = 0
+    for padrao in _LIMPEZA_PADROES:
+        for pasta in glob.glob(os.path.join(temp, padrao)):
+            try:
+                shutil.rmtree(pasta, ignore_errors=True)
+                removidos += 1
+            except Exception:
+                pass
+    if removidos:
+        print(f"🧹 Limpeza TEMP: {removidos} pasta(s) órfã(s) removida(s).")
+
+
+def _limpar_screenshots_antigos() -> None:
+    pasta = os.path.dirname(os.path.abspath(__file__))
+    removidos = 0
+    for padrao in ["print_*.png", "DEBUG_ERRO_*.png"]:
+        for arq in glob.glob(os.path.join(pasta, padrao)):
+            try:
+                idade_h = (time.time() - os.path.getmtime(arq)) / 3600
+                if idade_h > 24:
+                    os.remove(arq)
+                    removidos += 1
+            except Exception:
+                pass
+    if removidos:
+        print(f"🧹 Screenshots: {removidos} arquivo(s) com +24h removido(s).")
+
+
 # ── Orchestration ─────────────────────────────────────────────────────────────
 
 def _despachar(detector, repo, bot, analisador, proc, tribunal, txt, img):
@@ -178,6 +219,11 @@ def iniciar_vigilancia():
             cnt += 1
             continue
 
+        if cnt % 30 == 0 and cnt > 0:
+            _limpar_temp_playwright()
+        if cnt % 60 == 0 and cnt > 0:
+            _limpar_screenshots_antigos()
+
         processos_tjrj = repo.list_processos("TJRJ")
         processos_stf = repo.list_processos("STF")
         processos_tse = repo.list_processos("TSE")
@@ -189,6 +235,8 @@ def iniciar_vigilancia():
                     _despachar(detector, repo, bot, analisador_ia, pr, "TJRJ", t, i)
         except Exception as e:
             print(f"   ⚠️ Ciclo TJRJ abortado, seguindo: {e}")
+        finally:
+            _limpar_temp_playwright()
 
         try:
             for pr in processos_stf:
@@ -197,7 +245,7 @@ def iniciar_vigilancia():
         except Exception as e:
             print(f"   ⚠️ Ciclo STF abortado, seguindo: {e}")
 
-        if cnt % 10 == 0:
+        if cnt % 15 == 0:
             def rodar_tse(lista, _bot=bot, _det=detector, _repo=repo, _ia=analisador_ia):
                 for pr in lista:
                     t, i = extrair_tse_stealth(
