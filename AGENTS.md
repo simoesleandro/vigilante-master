@@ -10,9 +10,13 @@
 
 ### Limpeza de Disco (jun/2026)
 - Playwright criava perfis órfãos no %TEMP% a cada ciclo (~720/dia)
-- Implementado `_limpar_temp_playwright()` roda no `finally` do bloco TJRJ
-- Implementado `_limpar_screenshots_antigos()` remove PNGs com +24h
-- Limpeza periódica: a cada 30 ciclos (TEMP) e 60 ciclos (screenshots)
+- undetected_chromedriver (STF/TSE) criava `tmp*` que nunca eram limpos (principal vilão)
+- `_LIMPEZA_PADROES` inclui: `playwright_*`, `chrome_drag*`, `tmp*`, `scoped_dir*`
+- `_limpar_temp_playwright()` roda no `finally` de TJRJ, STF e TSE
+- STF/TSE usam funções batch (`extrair_stf_stealth_batch`, `extrair_tse_stealth_batch`) que reutilizam 1 driver por tribunal em vez de 1 por processo
+- `_limpar_screenshots_antigos()` remove PNGs com +24h
+- `_limpar_chrome_cache()` limpa caches do Chrome a cada 500 ciclos
+- Limpeza periódica: 30 ciclos (TEMP), 60 ciclos (screenshots), 500 ciclos (Chrome)
 - Guard de disco: aborta ciclo se < 2 GB livres (configurável via DISCO_MIN_GB)
 
 ### Frequência TSE (jun/2026)
@@ -32,9 +36,23 @@ sdelete -z C:
 
 ### Limpeza manual emergencial (na VM)
 ```powershell
+# Limpa tudo no TEMP
 Remove-Item "$env:TEMP\*" -Recurse -Force -ErrorAction SilentlyContinue
+
+# Cache pip
 pip cache purge
-Remove-Item "$env:LOCALAPPDATA\Google\Chrome\User Data\*\Cache\*" -Recurse -Force -ErrorAction SilentlyContinue
+
+# Caches do Chrome (shaders, extensões, modelos)
+$chromeData = "$env:LOCALAPPDATA\Google\Chrome\User Data"
+@("GrShaderCache","ShaderCache","GPUCache","component_crx_cache","extensions_crx_cache","optimization_guide_model_store") | ForEach-Object {
+    Remove-Item "$chromeData\$_" -Recurse -Force -ErrorAction SilentlyContinue
+}
+
+# Lixeira do Windows
+Clear-RecycleBin -Force -ErrorAction SilentlyContinue
+
+# Windows Update cleanup (libera vários GB)
+Dism.exe /online /Cleanup-Image /StartComponentCleanup /ResetBase
 ```
 
 ## Estrutura
