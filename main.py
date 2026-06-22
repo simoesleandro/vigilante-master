@@ -49,8 +49,8 @@ from detector import AndamentoInicial, Detector, FalhaCaptura, Mudanca
 from repo import ProcessoRepo
 from scrapers import (
     extrair_playwright,
-    extrair_stf_stealth,
-    extrair_tse_stealth,
+    extrair_stf_stealth_batch,
+    extrair_tse_stealth_batch,
     exterminar_zumbis,
 )
 from web_panel import iniciar_servidor_web
@@ -105,6 +105,8 @@ _LIMPEZA_PADROES = [
     "playwright_chromiumdev_profile-*",
     "playwright-artifacts-*",
     "chrome_drag*",
+    "tmp*",
+    "scoped_dir*",
 ]
 
 def _limpar_temp_playwright() -> None:
@@ -137,6 +139,48 @@ def _limpar_screenshots_antigos() -> None:
                 pass
     if removidos:
         print(f"🧹 Screenshots: {removidos} arquivo(s) com +24h removido(s).")
+
+
+def _tamanho_pasta(caminho: str) -> int:
+    total = 0
+    for dirpath, _, filenames in os.walk(caminho):
+        for f in filenames:
+            try:
+                total += os.path.getsize(os.path.join(dirpath, f))
+            except OSError:
+                pass
+    return total
+
+
+def _limpar_chrome_cache() -> None:
+    chrome_data = os.path.join(
+        os.environ.get("LOCALAPPDATA", ""),
+        "Google", "Chrome", "User Data"
+    )
+    if not os.path.isdir(chrome_data):
+        return
+
+    alvos = [
+        "GrShaderCache", "ShaderCache", "GPUCache",
+        "component_crx_cache", "extensions_crx_cache",
+        "optimization_guide_model_store",
+    ]
+    removidos = 0
+    bytes_liberados = 0
+    for alvo in alvos:
+        caminho = os.path.join(chrome_data, alvo)
+        if os.path.isdir(caminho):
+            try:
+                tamanho = _tamanho_pasta(caminho)
+                shutil.rmtree(caminho, ignore_errors=True)
+                bytes_liberados += tamanho
+                removidos += 1
+            except Exception:
+                pass
+
+    if removidos:
+        gb = bytes_liberados / (1024**3)
+        print(f"🧹 Chrome cache: {removidos} pasta(s) limpas ({gb:.2f} GB)")
 
 
 # ── Orchestration ─────────────────────────────────────────────────────────────
@@ -223,6 +267,8 @@ def iniciar_vigilancia():
             _limpar_temp_playwright()
         if cnt % 60 == 0 and cnt > 0:
             _limpar_screenshots_antigos()
+        if cnt % 500 == 0 and cnt > 0:
+            _limpar_chrome_cache()
 
         processos_tjrj = repo.list_processos("TJRJ")
         processos_stf = repo.list_processos("STF")
@@ -239,21 +285,28 @@ def iniciar_vigilancia():
             _limpar_temp_playwright()
 
         try:
-            for pr in processos_stf:
-                t, i = extrair_stf_stealth(pr['id'], pr['url'])
+            resultados_stf = extrair_stf_stealth_batch(
+                [(pr['id'], pr['url']) for pr in processos_stf]
+            )
+            for pr, (t, i) in zip(processos_stf, resultados_stf):
                 _despachar(detector, repo, bot, analisador_ia, pr, "STF", t, i)
         except Exception as e:
             print(f"   ⚠️ Ciclo STF abortado, seguindo: {e}")
+        finally:
+            _limpar_temp_playwright()
 
         if cnt % 15 == 0:
             def rodar_tse(lista, _bot=bot, _det=detector, _repo=repo, _ia=analisador_ia):
-                for pr in lista:
-                    t, i = extrair_tse_stealth(
-                        pr['id'], pr['url'], pr['numero'],
-                        on_captcha=lambda n, b=_bot: _notify_admin(b, f"🔑 Resolva TSE: {n}"),
+                try:
+                    resultados = extrair_tse_stealth_batch(
+                        [(pr['id'], pr['url'], pr['numero']) for pr in lista],
+                        on_captcha=lambda n: _notify_admin(_bot, f"🔑 Resolva TSE: {n}"),
                     )
-                    _despachar(_det, _repo, _bot, _ia, pr, "TSE", t, i)
-                    time.sleep(5)
+                    for pr, (t, i) in zip(lista, resultados):
+                        _despachar(_det, _repo, _bot, _ia, pr, "TSE", t, i)
+                        time.sleep(5)
+                finally:
+                    _limpar_temp_playwright()
             threading.Thread(target=rodar_tse, args=(processos_tse,), daemon=True).start()
 
         print("✅ Ciclo finalizado. Dormindo 2 min...")

@@ -191,8 +191,125 @@ def extrair_tse_stealth(
         print(f'   ❌ Erro ao extrair TSE ({id_nome}): {e}')
         return None, None
     finally:
+            if driver:
+                try:
+                    driver.quit()
+                except Exception:
+                    pass
+
+
+def extrair_stf_stealth_batch(
+    processos: list,
+) -> list:
+    with lock_navegador:
+        n = len(processos)
+        print(f'   📡 STF: Abrindo navegador para {n} processo(s)...')
+        driver = None
+        resultados = [(None, None)] * n
+        try:
+            options = uc.ChromeOptions()
+            options.add_argument('--headless=new')
+            options.add_argument('--disable-gpu')
+            options.add_argument('--window-size=1920,1080')
+            options.add_argument('--no-sandbox')
+            options.add_argument('--disable-dev-shm-usage')
+            driver = uc.Chrome(options=options, version_main=VERSAO_CHROME_VM)
+
+            for idx, (id_nome, url) in enumerate(processos):
+                print(f'   📡 {id_nome}: Acessando STF...')
+                try:
+                    driver.get(url)
+                    time.sleep(10)
+
+                    try:
+                        alvo = driver.find_element(By.CSS_SELECTOR, '.andamento-item, app-andamento')
+                        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", alvo)
+                        time.sleep(2)
+                    except Exception:
+                        driver.execute_script('window.scrollTo(0, 700)')
+
+                    print_path = f'print_{id_nome}.png'
+                    driver.save_screenshot(print_path)
+
+                    items = driver.find_elements(
+                        By.CSS_SELECTOR, '.andamento-item, .processo-detalhe-andamento tr'
+                    )
+                    txt = '\n'.join([i.text.strip() for i in items[:15] if len(i.text) > 10])
+                    resultados[idx] = (txt.strip(), print_path)
+                except Exception as e:
+                    print(f'   ❌ Erro detalhado no STF ({id_nome}): {e}')
+
+        except Exception as e:
+            print(f'   ❌ Erro fatal STF batch: {e}')
+        finally:
+            if driver:
+                driver.quit()
+        return resultados
+
+
+def extrair_tse_stealth_batch(
+    processos: list,
+    on_captcha=None,
+) -> list:
+    n = len(processos)
+    print(f'   📡 TSE: Abrindo navegador para {n} processo(s)...')
+    driver = None
+    resultados = [(None, None)] * n
+    try:
+        options = uc.ChromeOptions()
+        options.add_argument('--disable-gpu')
+        options.page_load_strategy = 'none'
+        driver = uc.Chrome(options=options, version_main=VERSAO_CHROME_VM)
+
+        for idx, (id_nome, url, numero) in enumerate(processos):
+            print(f'   📡 {id_nome}: Acessando TSE...')
+            try:
+                if on_captcha:
+                    on_captcha(numero)
+                driver.get(url)
+
+                card_alvo = None
+                tempo_limite = 300
+                tempo_inicial = time.time()
+
+                print(f'      [!] Aguardando resolucao do captcha na tela (limite 5 min)...')
+                while time.time() - tempo_inicial < tempo_limite:
+                    try:
+                        cards = driver.find_elements(By.CLASS_NAME, 'tramitacao-card')
+                        card_alvo = next(
+                            (c for c in cards if 'Movimentos' in c.text and 'Documentos' not in c.text),
+                            None,
+                        )
+                        if card_alvo and len(card_alvo.text.strip()) > 50:
+                            print(f'      ✅ {id_nome}: Dados carregados apos resolucao do captcha!')
+                            break
+                    except Exception:
+                        pass
+                    time.sleep(3)
+
+                if not card_alvo:
+                    print(f'      ❌ {id_nome}: Tempo esgotado aguardando resolucao do captcha.')
+                    continue
+
+                time.sleep(2)
+                print_path = f'print_{id_nome}.png'
+                card_alvo.screenshot(print_path)
+
+                linhas = [
+                    l.strip()
+                    for l in card_alvo.text.split('\n')
+                    if len(l.strip()) > 3 and l.strip().lower() != 'autorenew'
+                ]
+                resultados[idx] = ('\n'.join(linhas[:15]), print_path)
+            except Exception as e:
+                print(f'   ❌ Erro ao extrair TSE ({id_nome}): {e}')
+
+    except Exception as e:
+        print(f'   ❌ Erro fatal TSE batch: {e}')
+    finally:
         if driver:
             try:
                 driver.quit()
             except Exception:
                 pass
+    return resultados
