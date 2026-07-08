@@ -29,7 +29,6 @@ def _patched_load_verify(self, cafile=None, capath=None, cadata=None):
 ssl.SSLContext.load_verify_locations = _patched_load_verify
 ssl.SSLContext.load_default_certs = lambda self, purpose=ssl.Purpose.SERVER_AUTH: \
     self.load_verify_locations(cafile=certifi.where())
-ssl._create_default_https_context = ssl._create_unverified_context
 
 # ── Third-party imports ───────────────────────────────────────────────────────
 from dotenv import load_dotenv
@@ -230,7 +229,7 @@ def iniciar_vigilancia():
     detector = Detector()
     bot = telebot.TeleBot(TOKEN_TELEGRAM)
 
-    register_handlers(bot, repo, analisador_ia, CHATS_ESPECTADORES)
+    register_handlers(bot, repo, analisador_ia, CHATS_ESPECTADORES, ADMIN_ID)
 
     _notify_admin(bot, "🚀 <b>Vigilante Master v14.0 Online!</b>\nBanco de Dados, IA Evolutiva e Painel Web Ativados.")
 

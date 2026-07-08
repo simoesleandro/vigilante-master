@@ -84,30 +84,22 @@ _HTML_HACKER = """
             heartbeatRecebido = true;
         });
 
-        function digitarTexto(elemento, htmlCompleto, velocidade = 10) {
+        function digitarTexto(elemento, texto, velocidade = 10) {
             return new Promise(resolve => {
+                while (elemento.firstChild) elemento.removeChild(elemento.firstChild);
+                const txtNode = document.createTextNode("");
+                const cursor = document.createElement('span');
+                cursor.className = 'cursor';
+                elemento.appendChild(txtNode);
+                elemento.appendChild(cursor);
                 let i = 0;
-                let isTag = false;
-                let textoExibido = "";
-
-                elemento.innerHTML = '<span class="cursor"></span>';
-
                 function proximoCaractere() {
-                    if (i < htmlCompleto.length) {
-                        let char = htmlCompleto.charAt(i);
-                        textoExibido += char;
-                        elemento.innerHTML = textoExibido + '<span class="cursor"></span>';
-                        if (char === '<') isTag = true;
-                        if (char === '>') isTag = false;
+                    if (i < texto.length) {
+                        txtNode.data += texto.charAt(i);
                         i++;
                         painel.scrollTop = painel.scrollHeight;
-                        if (isTag) {
-                            proximoCaractere();
-                        } else {
-                            setTimeout(proximoCaractere, velocidade);
-                        }
+                        setTimeout(proximoCaractere, velocidade);
                     } else {
-                        elemento.innerHTML = textoExibido;
                         resolve();
                     }
                 }

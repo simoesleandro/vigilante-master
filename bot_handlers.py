@@ -14,10 +14,14 @@ def register_handlers(
     repo: ProcessoRepo,
     analisador: AnalisadorJuridico,
     chats_espectadores: list,
+    admin_id,
 ) -> None:
 
     def _autorizado(chat_id) -> bool:
         return str(chat_id) in chats_espectadores
+
+    def _eh_admin(chat_id) -> bool:
+        return bool(admin_id) and str(chat_id) == str(admin_id)
 
     # ── AI analysis task (runs in a thread) ──────────────────────────────────
 
@@ -45,7 +49,8 @@ def register_handlers(
             bot.send_message(message.chat.id, mensagem_final, parse_mode="HTML")
 
         except Exception as e:
-            bot.send_message(message.chat.id, f"❌ Erro Crítico na IA: {e}")
+            print(f"❌ Erro na IA ({pid}): {e}")
+            bot.send_message(message.chat.id, "❌ Erro interno na IA. Verifique os logs.")
 
     # ── Context submission flow ───────────────────────────────────────────────
 
@@ -270,6 +275,9 @@ def register_handlers(
                 threading.Thread(target=tarefa_ia_resumo, args=(call.message, pid, proc)).start()
 
             elif acao == "reenviar":
+                if not _eh_admin(call.message.chat.id):
+                    bot.answer_callback_query(call.id, "⛔ Só admin.")
+                    return
                 reenviar_notificacao(call.message, pid)
 
             elif acao == "ctx":
@@ -291,6 +299,11 @@ def register_handlers(
         try:
             partes = message.text.split()
             comando = partes[0].lower()
+
+            if any(c in comando for c in ("/remover", "/adicionar", "/reenviar")) \
+                    and not _eh_admin(message.chat.id):
+                bot.send_message(message.chat.id, "⛔ Apenas o administrador pode executar este comando.")
+                return
 
             if "/listar" in comando:
                 listar_processos(message)

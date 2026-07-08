@@ -27,16 +27,29 @@ def carteiro_worker(bot: telebot.TeleBot, chats_espectadores: list) -> None:
             if truncado:
                 texto_extraido_seguro += "\n<i>[Texto cortado — use os botões abaixo]</i>"
 
+            numero_seg = html.escape(str(p.get('numero', '')))
+            tribunal_seg = html.escape(str(t.get('tribunal', '')))
+            classe_seg = html.escape(str(p.get('classe', '')))
+            parte_label_seg = html.escape(str(p.get('parte_label', '')))
+            parte_nome_seg = html.escape(str(p.get('parte_nome', '')))
+
+            from urllib.parse import urlparse
+            url_raw = str(p.get('url', ''))
+            parsed = urlparse(url_raw)
+            url_seg = html.escape(url_raw, quote=True)
+            href_seguro = url_seg if parsed.scheme in ('http', 'https') else ''
+            link_html = f"🔗 <a href='{href_seguro}'>Abrir no Tribunal</a>" if href_seguro else "🔗 (URL inválida)"
+
             texto_html = (
                 f"🏛 <b>NOVA MOVIMENTAÇÃO DETECTADA</b>\n"
-                f"📌 <b>Processo:</b> <code>{p['numero']}</code>\n"
-                f"⚖️ <b>Tribunal:</b> {t['tribunal']}\n"
-                f"📋 <b>Classe:</b> {p['classe']}\n"
-                f"👤 <b>{p['parte_label']}:</b> {p['parte_nome']}\n"
+                f"📌 <b>Processo:</b> <code>{numero_seg}</code>\n"
+                f"⚖️ <b>Tribunal:</b> {tribunal_seg}\n"
+                f"📋 <b>Classe:</b> {classe_seg}\n"
+                f"👤 <b>{parte_label_seg}:</b> {parte_nome_seg}\n"
                 f"📅 <b>Alerta:</b> {agora}\n\n"
                 f"🔍 <b>Andamentos Recentes:</b>\n"
                 f"<blockquote>🟡 <b>ATUALIZAÇÃO:</b>\n{texto_extraido_seguro}</blockquote>\n"
-                f"🔗 <a href='{p['url']}'>Abrir no Tribunal</a>"
+                f"{link_html}"
             )
 
             markup = InlineKeyboardMarkup()
