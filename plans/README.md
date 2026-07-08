@@ -57,10 +57,10 @@ TSE headed+captcha, TJRJ Playwright). Buscam segurança e eficiência máximas.
 
 | Plano | Título | Esforço | Risco | Depende de | Status |
 |-------|--------|---------|-------|------------|--------|
-| 015   | Spike — abstração de Tribunal plugável (desbloqueia TRF/TRT) | L (spike M) | MED | 008,009,014 | TODO |
-| 016   | Spike — Web CRUD com auth (painel hoje é só log) | M (spike S) | MED | 013 | TODO |
+| 015   | Spike — abstração de Tribunal plugável (desbloqueia TRF/TRT) | L (spike M) | MED | 008,009,014 | DONE — implementação pendente de decisão das perguntas |
+| 016   | Spike — Web CRUD com auth (painel hoje é só log) | M (spike S) | MED | 013 | DONE — implementação pendente de decisão de auth |
 | 017   | `update_processo` + export/import (preenche o bulk-add perdido) | M | LOW | 006,002 | DONE |
-| 018   | Limpar wording "VM" + spike WinSW (deploy como serviço Windows) | S+M | LOW/MED | — | TODO |
+| 018   | Limpar wording "VM" + spike WinSW (deploy como serviço Windows) | S+M | LOW/MED | — | DONE |
 
 Status: TODO | IN PROGRESS | DONE | BLOCKED (motivo) | REJECTED (motivo)
 

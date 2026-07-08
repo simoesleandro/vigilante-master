@@ -294,6 +294,59 @@ class ProcessoRepo:
         finally:
             self._close(conn)
 
+    def update_processo(self, pid: str, **campos) -> bool:
+        permitidos = {"numero", "url", "tribunal", "parte_label",
+                      "parte_nome", "classe"}
+        sets = []
+        vals = []
+        for k, v in campos.items():
+            if k in permitidos:
+                sets.append(f"{k} = ?")
+                vals.append(v)
+        if not sets:
+            return False
+        vals.append(pid)
+        conn = self._conn()
+        try:
+            cursor = conn.cursor()
+            cursor.execute(f"UPDATE processos SET {', '.join(sets)} WHERE pid = ?", vals)
+            conn.commit()
+            return cursor.rowcount > 0
+        except Exception as e:
+            print(f"❌ Erro ao atualizar {pid}: {e}")
+        finally:
+            self._close(conn)
+        return False
+
+    def exportar(self) -> list:
+        out = []
+        for p in self.list_todos():
+            proc = self.get_processo(p[0])
+            proc["contexto"] = self.get_historico_contexto(p[0])
+            out.append(proc)
+        return out
+
+    def importar(self, dados: list) -> int:
+        n = 0
+        for item in dados:
+            pid = item.get("id")
+            if not pid or self.pid_exists(pid):
+                continue
+            self.add_processo(
+                pid,
+                item.get("numero", ""),
+                item.get("url", ""),
+                item.get("tribunal", ""),
+                item.get("parte_label", ""),
+                item.get("parte_nome", ""),
+                item.get("classe", ""),
+                item.get("resumo", ""),
+            )
+            for dh, txt in item.get("contexto", []):
+                self.add_contexto(pid, dh, txt)
+            n += 1
+        return n
+
     def delete_processo(self, pid: str) -> None:
         conn = self._conn()
         try:

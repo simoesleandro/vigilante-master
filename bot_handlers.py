@@ -1,3 +1,5 @@
+import io
+import json
 import os
 import threading
 import time
@@ -316,7 +318,7 @@ def register_handlers(
         except Exception as e:
             print(f"⚠️ Erro ao processar clique: {e}")
 
-    @bot.message_handler(commands=['resumo', 'ia', 'listar', 'remover', 'adicionar', 'reenviar'])
+    @bot.message_handler(commands=['resumo', 'ia', 'listar', 'remover', 'adicionar', 'reenviar', 'editar', 'exportar'])
     def comandos_digitados(message) -> None:
         if not _autorizado(message.chat.id):
             return
@@ -324,7 +326,7 @@ def register_handlers(
             partes = message.text.split()
             comando = partes[0].lower()
 
-            if any(c in comando for c in ("/remover", "/adicionar", "/reenviar")) \
+            if any(c in comando for c in ("/remover", "/adicionar", "/reenviar", "/editar", "/exportar")) \
                     and not _eh_admin(message.chat.id):
                 bot.send_message(message.chat.id, "⛔ Apenas o administrador pode executar este comando.")
                 return
@@ -385,6 +387,77 @@ def register_handlers(
                 )
                 threading.Thread(target=tarefa_ia_resumo, args=(message, pid, proc)).start()
 
+            elif "/editar" in comando:
+                if len(partes) < 4:
+                    bot.reply_to(
+                        message,
+                        "⚠️ Use: <code>/editar PID campo valor</code>\n"
+                        "Campos: numero, url, tribunal, parte_label, parte_nome, classe.",
+                        parse_mode="HTML",
+                    )
+                    return
+                pid_editar = partes[1].upper()
+                campo = partes[2].lower()
+                valor = " ".join(partes[3:])
+                ok = repo.update_processo(pid_editar, **{campo: valor})
+                if ok:
+                    bot.send_message(
+                        message.chat.id,
+                        f"✅ <b>{pid_editar}</b>: <code>{campo}</code> atualizado.",
+                        parse_mode="HTML",
+                    )
+                else:
+                    bot.send_message(
+                        message.chat.id,
+                        f"❌ Falhou (pid inexistente ou campo '{campo}' não permitido).",
+                    )
+                return
+
+            elif "/exportar" in comando:
+                dados = repo.exportar()
+                if not dados:
+                    bot.send_message(message.chat.id, "📭 Nada para exportar.")
+                    return
+                payload = json.dumps(dados, ensure_ascii=False, indent=2).encode("utf-8")
+                buf = io.BytesIO(payload)
+                buf.name = "vigilante_export.json"
+                bot.send_document(
+                    message.chat.id,
+                    buf,
+                    visible_file_name="vigilante_export.json",
+                    caption=f"📦 Export: {len(dados)} processo(s).",
+                )
+                return
+
         except Exception as e:
             print(f"Erro no comando: {e}")
             bot.reply_to(message, "⚠️ Ocorreu um erro ao processar o comando.")
+
+    @bot.message_handler(content_types=['document'])
+    def receber_documento(message) -> None:
+        if not _autorizado(message.chat.id) or not _eh_admin(message.chat.id):
+            bot.send_message(message.chat.id, "⛔ Só admin pode importar.")
+            return
+        if not message.document or not message.document.file_name \
+                or not message.document.file_name.lower().endswith(".json"):
+            bot.send_message(message.chat.id, "⚠️ Anexe um arquivo .json (use o que veio de /exportar).")
+            return
+        try:
+            file_info = bot.get_file(message.document.file_id)
+            downloaded = bot.download_file(file_info.file_path)
+            dados = json.loads(downloaded.decode("utf-8"))
+            if not isinstance(dados, list):
+                bot.send_message(message.chat.id, "❌ JSON inválido: esperado uma lista de processos.")
+                return
+            n = repo.importar(dados)
+            bot.send_message(
+                message.chat.id,
+                f"✅ Importados: <b>{n}</b> processo(s) novos. "
+                "Pids já existentes foram pulados.",
+                parse_mode="HTML",
+            )
+        except (json.JSONDecodeError, UnicodeDecodeError) as e:
+            bot.send_message(message.chat.id, f"❌ JSON inválido: {e}")
+        except Exception as e:
+            print(f"Erro no /importar: {e}")
+            bot.send_message(message.chat.id, "❌ Erro ao importar. Verifique os logs.")

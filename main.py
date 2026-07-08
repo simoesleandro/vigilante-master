@@ -332,11 +332,11 @@ if __name__ == "__main__":
 
         mensagem_alerta = (
             "🚨 <b>VIGILANTE MASTER CAIU!</b> 🚨\n\n"
-            "A Máquina Virtual encontrou um Erro Fatal e o script foi interrompido.\n\n"
+            "O monitor encontrou um Erro Fatal e o script foi interrompido.\n\n"
             f"<b>Motivo:</b> {html.escape(erro_str_curto)}\n\n"
             "<b>Log:</b>\n"
             f"<code>{html.escape(erro_trace_curto)}</code>\n\n"
-            "⚠️ <i>Acesse a VM para reiniciar o sistema.</i>"
+            "⚠️ <i>Reinicie o script <code>python main.py</code> no desktop.</i>"
         )
         if ADMIN_ID:
             try:
