@@ -43,8 +43,8 @@ TSE headed+captcha, TJRJ Playwright). Buscam segurança e eficiência máximas.
 
 | Plano | Título | Esforço | Risco | Depende de | Status |
 |-------|--------|---------|-------|------------|--------|
-| 011   | Limpeza tech debt — deletar scrapers single mortos + mover `arquivo_historico/` | S | LOW | 009 | TODO |
-| 012   | Corrigir docs — README env vars + `.env.example` + AGENTS.md módulos/porta | S | LOW | — | TODO |
+| 011   | Limpeza tech debt — deletar scrapers single mortos + mover `arquivo_historico/` | S | LOW | 009 | DONE |
+| 012   | Corrigir docs — README env vars + `.env.example` + AGENTS.md módulos/porta | S | LOW | — | DONE |
 
 ### Fase 6 — DX + Testes (P2)
 

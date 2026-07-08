@@ -61,5 +61,8 @@ Dism.exe /online /Cleanup-Image /StartComponentCleanup /ResetBase
 - `detector.py` - Detecção de mudanças
 - `analisador.py` - Análise com Gemini IA
 - `carteiro.py` - Fila de envio Telegram
-- `web_panel.py` - Painel Flask em localhost:5000
-- `arquivo_historico/` - Versões antigas (v2-v13)
+- `repo.py` - Persistência SQLite
+- `bot_handlers.py` - Handlers do bot Telegram
+- `output_stream.py` - Stream de saída unificado
+- `web_panel.py` - Painel Flask em localhost:8080 (configurável via `FLASK_PORT`)
+- `arquivo_historico/` - Versões antigas (v2-v13) arquivadas no histórico git (git log -- arquivo_historico/)

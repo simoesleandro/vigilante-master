@@ -11,10 +11,10 @@
 
 <br/>
 
-[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org)
+[![Python](https://img.shields.io/badge/Python-3.12+-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org)
 [![Playwright](https://img.shields.io/badge/Playwright-scraping-45ba4b?style=flat-square)](https://playwright.dev)
 [![Selenium](https://img.shields.io/badge/Selenium-stealth-43B02A?style=flat-square&logo=selenium&logoColor=white)](https://selenium.dev)
-[![Gemini](https://img.shields.io/badge/Gemini-2.5--Flash-4285F4?style=flat-square&logo=google)](https://aistudio.google.com)
+[![Gemini](https://img.shields.io/badge/Gemini-3.1--Flash--Lite-4285F4?style=flat-square&logo=google)](https://aistudio.google.com)
 [![Telegram](https://img.shields.io/badge/Telegram-Bot-26A5E4?style=flat-square&logo=telegram&logoColor=white)](https://core.telegram.org/bots)
 [![SQLite](https://img.shields.io/badge/SQLite-003B57?style=flat-square&logo=sqlite&logoColor=white)](https://sqlite.org)
 [![License](https://img.shields.io/badge/license-MIT-22c55e?style=flat-square)](LICENSE)
@@ -81,9 +81,9 @@ Vigilante Master autonomously monitors judicial processes in Brazil's major cour
 
 | Camada | Tecnologia |
 |--------|------------|
-| Backend | Python 3.11+ |
+| Backend | Python 3.12+ |
 | Scraping | Playwright · Selenium Stealth |
-| IA | Gemini 2.5 Flash (resumos evolutivos) |
+| IA | Gemini 3.1 Flash Lite (resumos evolutivos) |
 | Notificações | Telegram Bot API |
 | Banco | SQLite |
 | Web Panel | Flask + HTML/CSS |
@@ -104,7 +104,7 @@ vigilante-master/
 ├── bot_handlers.py        # Handlers do bot Telegram
 ├── output_stream.py       # Stream de saída unificado
 ├── web_panel.py           # Painel web Flask
-└── arquivo_historico/     # Versões anteriores arquivadas
+└── arquivo_historico/     # Versões anteriores arquivadas no histórico git (git log -- arquivo_historico/)
 ```
 
 **Fluxo principal:**
@@ -159,16 +159,17 @@ python main.py
 
 | Variável | Descrição |
 |----------|-----------|
-| `GEMINI_API_KEY` | Gemini API (resumos evolutivos) |
-| `TELEGRAM_BOT_TOKEN` | Bot Telegram (alertas) |
-| `TELEGRAM_CHAT_ID` | Chat ID destino |
-| `ADMIN_ID` | ID do administrador do bot |
-| `PROCESSOS_TJRJ` | Números de processo TJRJ (separados por vírgula) |
-| `PROCESSOS_STF` | Números de processo STF |
-| `PROCESSOS_TSE` | Números de processo TSE |
-| `INTERVALO_MINUTOS` | Intervalo entre ciclos de verificação |
+| `TOKEN_TELEGRAM` | Token do bot Telegram (alertas) |
+| `ADMIN_ID` | `chat_id` numérico do administrador (comandos mutativos só este chat) |
+| `CHATS_ESPECTADORES` | IDs de destinatários só-leitura + IA, separados por vírgula |
+| `API_KEY_GEMINI` | Chave do Google Gemini (resumos evolutivos) |
+| `DISCO_MIN_GB` | Espaço mínimo em disco (GB) — aborta ciclos se abaixo disso (default 2) |
+| `FLASK_PORT` | Porta do painel web Flask (default 8080) |
 
 > Lista completa em: [`.env.example`](.env.example)
+
+**Nota:** Processos são gerenciados via bot Telegram (`/adicionar`, `/remover`)
+e persistidos em SQLite; o intervalo entre ciclos é fixo (2 min).
 
 ---
 

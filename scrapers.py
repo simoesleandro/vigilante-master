@@ -204,23 +204,6 @@ def _raspar_stf(driver, id_nome: str, url: str) -> Tuple[Optional[str], Optional
     return txt.strip(), print_path
 
 
-def extrair_stf_stealth(
-    id_nome: str,
-    url: str,
-) -> Tuple[Optional[str], Optional[str]]:
-    with lock_navegador:
-        driver = None
-        try:
-            driver = _criar_driver_stf()
-            return _raspar_stf(driver, id_nome, url)
-        except Exception as e:
-            print(f'   ❌ Erro detalhado no STF ({id_nome}): {e}')
-            return None, None
-        finally:
-            if driver:
-                driver.quit()
-
-
 def extrair_stf_stealth_batch(
     processos: list,
 ) -> list:
@@ -245,69 +228,6 @@ def extrair_stf_stealth_batch(
 
 
 # ── TSE ─────────────────────────────────────────────────────────────────────
-
-def extrair_tse_stealth(
-    id_nome: str,
-    url: str,
-    numero: str,
-    on_captcha: Callable[[str], None] = lambda n: None,
-) -> Tuple[Optional[str], Optional[str]]:
-    with lock_navegador:
-        print(f'   📡 {id_nome}: Acessando TSE...')
-        driver = None
-        try:
-            options = uc.ChromeOptions()
-            options.add_argument('--disable-gpu')
-            options.page_load_strategy = 'none'
-            driver = uc.Chrome(options=options, version_main=VERSAO_CHROME_VM)
-
-            on_captcha(numero)
-            driver.get(url)
-
-            card_alvo = None
-            tempo_limite = 300
-            tempo_inicial = time.time()
-
-            print(f'      [!] Aguardando resolução do captcha na tela (limite 5 min)...')
-            while time.time() - tempo_inicial < tempo_limite:
-                try:
-                    cards = driver.find_elements(By.CLASS_NAME, 'tramitacao-card')
-                    card_alvo = next(
-                        (c for c in cards if 'Movimentos' in c.text and 'Documentos' not in c.text),
-                        None,
-                    )
-                    if card_alvo and len(card_alvo.text.strip()) > 50:
-                        print(f'      ✅ {id_nome}: Dados carregados após resolução do captcha!')
-                        break
-                except Exception:
-                    pass
-                time.sleep(3)
-
-            if not card_alvo:
-                print(f'      ❌ {id_nome}: Tempo esgotado aguardando resolução do captcha.')
-                return None, None
-
-            time.sleep(2)
-            print_path = f'print_{id_nome}.png'
-            card_alvo.screenshot(print_path)
-
-            linhas = [
-                l.strip()
-                for l in card_alvo.text.split('\n')
-                if len(l.strip()) > 3 and l.strip().lower() != 'autorenew'
-            ]
-            return '\n'.join(linhas[:15]), print_path
-
-        except Exception as e:
-            print(f'   ❌ Erro ao extrair TSE ({id_nome}): {e}')
-            return None, None
-        finally:
-            if driver:
-                try:
-                    driver.quit()
-                except Exception:
-                    pass
-
 
 def extrair_tse_stealth_batch(
     processos: list,
