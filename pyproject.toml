@@ -1,0 +1,17 @@
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["arquivo_historico", ".venv", "venv"]
+
+[tool.ruff.lint]
+# comece enxuto: erros reais + estilo básico. Expanda depois.
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+ignore = ["E501"]  # line-length tratado pelo formatter, não pelo lint
+
+[tool.ruff.format]
+quote-style = "preserve"  # não reescrever aspas existentes neste PR
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-q"

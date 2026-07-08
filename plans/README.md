@@ -50,8 +50,8 @@ TSE headed+captcha, TJRJ Playwright). Buscam segurança e eficiência máximas.
 
 | Plano | Título | Esforço | Risco | Depende de | Status |
 |-------|--------|---------|-------|------------|--------|
-| 013   | DX — adicionar ruff (lint+format) + config pytest + gate documentado | M | LOW | 011 | TODO |
-| 014   | Teste do carteiro (escaping/truncation) — o caminho security-sensitive | S | LOW | 004 | TODO |
+| 013   | DX — adicionar ruff (lint+format) + config pytest + gate documentado | M | LOW | 011 | DONE |
+| 014   | Teste do carteiro (escaping/truncation) — o caminho security-sensitive | S | LOW | 004 | DONE |
 
 ### Fase 7 — Direções (P3, spikes/design)
 

@@ -153,6 +153,16 @@ cp .env.example .env
 python main.py
 ```
 
+### Verificar / Verify
+
+```bash
+# Lint (ruff)
+ruff check .
+
+# Testes / Tests
+python -m pytest tests/ -q
+```
+
 ---
 
 ## 🔐 Variáveis de Ambiente / Environment Variables

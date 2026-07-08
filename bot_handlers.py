@@ -189,7 +189,7 @@ def register_handlers(
         url = message.text.strip()
         bot.send_message(
             message.chat.id,
-            f"URL definida.\n\n5. Digite a <b>Classe Processual</b> (Ex: Mandado de Segurança Cível):",
+            "URL definida.\n\n5. Digite a <b>Classe Processual</b> (Ex: Mandado de Segurança Cível):",
             parse_mode="HTML",
         )
         bot.register_next_step_handler(message, _obter_classe, tribunal, pid, numero, url)

@@ -1,7 +1,7 @@
 import os
 import time
 import threading
-from typing import Callable, Optional, Tuple
+from typing import Optional, Tuple
 
 import undetected_chromedriver as uc
 from playwright.sync_api import PlaywrightContextManager, sync_playwright
@@ -255,7 +255,7 @@ def extrair_tse_stealth_batch(
                     tempo_limite = 300
                     tempo_inicial = time.time()
 
-                    print(f'      [!] Aguardando resolucao do captcha na tela (limite 5 min)...')
+                    print('      [!] Aguardando resolucao do captcha na tela (limite 5 min)...')
                     while time.time() - tempo_inicial < tempo_limite:
                         try:
                             cards = driver.find_elements(By.CLASS_NAME, 'tramitacao-card')

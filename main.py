@@ -4,7 +4,6 @@ import logging
 import os
 import shutil
 import ssl
-import sys
 import threading
 import time
 import traceback
@@ -36,7 +35,6 @@ load_dotenv()
 
 import telebot
 from google import genai
-from playwright.sync_api import sync_playwright
 
 telebot.logger.setLevel(logging.CRITICAL)
 
