@@ -4,8 +4,10 @@ import threading
 from typing import Callable, Optional, Tuple
 
 import undetected_chromedriver as uc
-from playwright.sync_api import PlaywrightContextManager
+from playwright.sync_api import PlaywrightContextManager, sync_playwright
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 lock_navegador = threading.Lock()
 VERSAO_CHROME_VM = 150
@@ -93,6 +95,75 @@ def extrair_playwright(
                     pass
 
 
+def _raspar_tjrj(pag, id_nome: str, url: str) -> Tuple[Optional[str], Optional[str]]:
+    print(f"   📡 {id_nome}: Acessando TJRJ...")
+    try:
+        pag.goto(url, timeout=60000, wait_until='domcontentloaded')
+        tabela = pag.locator("table:has(th:has-text('Data'))").first
+        pag.wait_for_timeout(2000)
+        tabela.scroll_into_view_if_needed()
+        primeira_linha = tabela.locator('tr').nth(1)
+        box = primeira_linha.bounding_box()
+        print_path = f'print_{id_nome}.png'
+        pag.screenshot(path=print_path, clip={'x': box['x'], 'y': box['y'] - 5, 'width': 650, 'height': 600})
+        linhas = tabela.locator('tr').all()
+        txt = '\n'.join([l.inner_text().strip() for l in linhas[1:15]])
+        return txt.strip(), print_path
+    except Exception as e:
+        print(f'   ❌ Erro ao extrair {id_nome}: {e}')
+        try:
+            pag.screenshot(path=os.path.join(os.path.dirname(os.path.abspath(__file__)), f'DEBUG_ERRO_{id_nome}.png'), full_page=True)
+        except Exception:
+            pass
+        return None, None
+
+
+def extrair_playwright_batch(processos: list) -> list:
+    with lock_navegador:
+        n = len(processos)
+        print(f'   📡 TJRJ: Abrindo navegador para {n} processo(s)...')
+        nav = None
+        resultados = [(None, None)] * n
+        try:
+            with sync_playwright() as p:
+                nav = p.chromium.launch(
+                    headless=False,
+                    args=[
+                        '--headless=new', '--disable-gpu', '--window-size=1920,1080',
+                        '--disable-blink-features=AutomationControlled',
+                    ],
+                )
+                ctx = nav.new_context(
+                    viewport={'width': 1280, 'height': 1200},
+                    user_agent=(
+                        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                        'AppleWebKit/537.36 (KHTML, like Gecko) '
+                        'Chrome/124.0.0.0 Safari/537.36'
+                    ),
+                )
+                ctx.add_init_script(
+                    "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
+                )
+                for idx, pr in enumerate(processos):
+                    pag = ctx.new_page()
+                    try:
+                        resultados[idx] = _raspar_tjrj(pag, pr['id'], pr['url'])
+                    finally:
+                        try:
+                            pag.close()
+                        except Exception:
+                            pass
+        except Exception as e:
+            print(f'   ❌ Erro fatal TJRJ batch: {e}')
+        finally:
+            if nav:
+                try:
+                    nav.close()
+                except Exception:
+                    pass
+        return resultados
+
+
 # ── STF ─────────────────────────────────────────────────────────────────────
 # Lógica de scraping compartilhada entre o modo single e o modo batch.
 
@@ -109,7 +180,12 @@ def _criar_driver_stf():
 def _raspar_stf(driver, id_nome: str, url: str) -> Tuple[Optional[str], Optional[str]]:
     print(f'   📡 {id_nome}: Acessando STF...')
     driver.get(url)
-    time.sleep(10)
+    try:
+        WebDriverWait(driver, 15).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, '.andamento-item, app-andamento'))
+        )
+    except Exception:
+        pass  # timeout: segue pro fallback de scroll (abaixo)
 
     try:
         alvo = driver.find_element(By.CSS_SELECTOR, '.andamento-item, app-andamento')

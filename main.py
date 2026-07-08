@@ -47,7 +47,7 @@ from carteiro import carteiro_worker, fila_saida
 from detector import AndamentoInicial, Detector, FalhaCaptura, Mudanca
 from repo import ProcessoRepo
 from scrapers import (
-    extrair_playwright,
+    extrair_playwright_batch,
     extrair_stf_stealth_batch,
     extrair_tse_stealth_batch,
     exterminar_zumbis,
@@ -258,7 +258,8 @@ def iniciar_vigilancia():
     tse_thread = None
     while True:
         print(f"\n--- CICLO #{cnt} | {time.strftime('%H:%M:%S')} ---")
-        exterminar_zumbis()
+        if cnt % 30 == 0 and cnt > 0:
+            exterminar_zumbis()
 
         if not _checar_espaco_disco(bot):
             print("⏸️ Aguardando 5 min antes de nova verificação de disco...")
@@ -278,10 +279,11 @@ def iniciar_vigilancia():
         processos_tse = repo.list_processos("TSE")
 
         try:
-            with sync_playwright() as p:
-                for pr in processos_tjrj:
-                    t, i = extrair_playwright(p, pr['id'], pr['url'])
-                    _despachar(detector, repo, bot, analisador_ia, pr, "TJRJ", t, i)
+            resultados_tjrj = extrair_playwright_batch(
+                [{'id': pr['id'], 'url': pr['url']} for pr in processos_tjrj]
+            )
+            for pr, (t, i) in zip(processos_tjrj, resultados_tjrj):
+                _despachar(detector, repo, bot, analisador_ia, pr, "TJRJ", t, i)
         except Exception as e:
             print(f"   ⚠️ Ciclo TJRJ abortado, seguindo: {e}")
         finally:

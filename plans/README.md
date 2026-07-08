@@ -36,8 +36,8 @@ TSE headed+captcha, TJRJ Playwright). Buscam segurança e eficiência máximas.
 
 | Plano | Título | Esforço | Risco | Depende de | Status |
 |-------|--------|---------|-------|------------|--------|
-| 009   | TJRJ batch — reusar 1 Chromium para todos os processos | M | LOW-MED | — | TODO |
-| 010   | WebDriverWait no STF + cadência do `exterminar_zombis` | S | LOW | — | TODO |
+| 009   | TJRJ batch — reusar 1 Chromium para todos os processos | M | LOW-MED | — | DONE |
+| 010   | WebDriverWait no STF + cadência do `exterminar_zombis` | S | LOW | — | DONE |
 
 ### Fase 5 — Tech Debt + Docs (P2)
 
