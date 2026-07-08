@@ -127,6 +127,9 @@ def register_handlers(
         bot.register_next_step_handler(message, _obter_tribunal)
 
     def _obter_tribunal(message) -> None:
+        if not message.text:
+            bot.send_message(message.chat.id, "⚠️ Envie uma mensagem de texto. Para cancelar, digite 'cancelar'.")
+            return
         if message.text.lower() == 'cancelar':
             bot.send_message(message.chat.id, "❌ Cadastro cancelado.")
             return
@@ -143,6 +146,9 @@ def register_handlers(
         bot.register_next_step_handler(message, _obter_pid, tribunal)
 
     def _obter_pid(message, tribunal: str) -> None:
+        if not message.text:
+            bot.send_message(message.chat.id, "⚠️ Envie uma mensagem de texto. Para cancelar, digite 'cancelar'.")
+            return
         if message.text.lower() == 'cancelar':
             bot.send_message(message.chat.id, "❌ Cadastro cancelado.")
             return
@@ -159,6 +165,9 @@ def register_handlers(
         bot.register_next_step_handler(message, _obter_numero, tribunal, pid)
 
     def _obter_numero(message, tribunal: str, pid: str) -> None:
+        if not message.text:
+            bot.send_message(message.chat.id, "⚠️ Envie uma mensagem de texto. Para cancelar, digite 'cancelar'.")
+            return
         if message.text.lower() == 'cancelar':
             bot.send_message(message.chat.id, "❌ Cadastro cancelado.")
             return
@@ -171,6 +180,9 @@ def register_handlers(
         bot.register_next_step_handler(message, _obter_url, tribunal, pid, numero)
 
     def _obter_url(message, tribunal: str, pid: str, numero: str) -> None:
+        if not message.text:
+            bot.send_message(message.chat.id, "⚠️ Envie uma mensagem de texto. Para cancelar, digite 'cancelar'.")
+            return
         if message.text.lower() == 'cancelar':
             bot.send_message(message.chat.id, "❌ Cadastro cancelado.")
             return
@@ -183,6 +195,9 @@ def register_handlers(
         bot.register_next_step_handler(message, _obter_classe, tribunal, pid, numero, url)
 
     def _obter_classe(message, tribunal: str, pid: str, numero: str, url: str) -> None:
+        if not message.text:
+            bot.send_message(message.chat.id, "⚠️ Envie uma mensagem de texto. Para cancelar, digite 'cancelar'.")
+            return
         if message.text.lower() == 'cancelar':
             bot.send_message(message.chat.id, "❌ Cadastro cancelado.")
             return
@@ -195,6 +210,9 @@ def register_handlers(
         bot.register_next_step_handler(message, _obter_parte_label, tribunal, pid, numero, url, classe)
 
     def _obter_parte_label(message, tribunal: str, pid: str, numero: str, url: str, classe: str) -> None:
+        if not message.text:
+            bot.send_message(message.chat.id, "⚠️ Envie uma mensagem de texto. Para cancelar, digite 'cancelar'.")
+            return
         if message.text.lower() == 'cancelar':
             bot.send_message(message.chat.id, "❌ Cadastro cancelado.")
             return
@@ -207,6 +225,9 @@ def register_handlers(
         bot.register_next_step_handler(message, _obter_parte_nome, tribunal, pid, numero, url, classe, parte_label)
 
     def _obter_parte_nome(message, tribunal: str, pid: str, numero: str, url: str, classe: str, parte_label: str) -> None:
+        if not message.text:
+            bot.send_message(message.chat.id, "⚠️ Envie uma mensagem de texto. Para cancelar, digite 'cancelar'.")
+            return
         if message.text.lower() == 'cancelar':
             bot.send_message(message.chat.id, "❌ Cadastro cancelado.")
             return
@@ -224,6 +245,9 @@ def register_handlers(
         message, tribunal: str, pid: str, numero: str, url: str,
         classe: str, parte_label: str, parte_nome: str,
     ) -> None:
+        if not message.text:
+            bot.send_message(message.chat.id, "⚠️ Envie uma mensagem de texto. Para cancelar, digite 'cancelar'.")
+            return
         if message.text.lower() == 'cancelar':
             bot.send_message(message.chat.id, "❌ Cadastro cancelado.")
             return

@@ -237,21 +237,25 @@ def iniciar_vigilancia():
         target=carteiro_worker, args=(bot, CHATS_ESPECTADORES), daemon=True
     ).start()
     def _run_polling():
+        backoff = 5
         while True:
             try:
                 bot.infinity_polling(skip_pending=True)
+                backoff = 5  # reset após sucesso
             except Exception as e:
                 if "409" in str(e):
                     print("⚠️ Conflito de instância (409) — aguardando 30s para reconectar...")
                     time.sleep(30)
                 else:
-                    print(f"⚠️ Polling encerrado: {e}")
-                    break
+                    print(f"⚠️ Polling erro ({type(e).__name__}): {e} — retry em {backoff}s")
+                    time.sleep(backoff)
+                    backoff = min(backoff * 2, 300)  # cap 5min
 
     threading.Thread(target=_run_polling, daemon=True).start()
     threading.Thread(target=iniciar_servidor_web, daemon=True).start()
 
     cnt = 0
+    tse_thread = None
     while True:
         print(f"\n--- CICLO #{cnt} | {time.strftime('%H:%M:%S')} ---")
         exterminar_zumbis()
@@ -295,18 +299,22 @@ def iniciar_vigilancia():
             _limpar_temp_playwright()
 
         if cnt % 15 == 0:
-            def rodar_tse(lista, _bot=bot, _det=detector, _repo=repo, _ia=analisador_ia):
-                try:
-                    resultados = extrair_tse_stealth_batch(
-                        [(pr['id'], pr['url'], pr['numero']) for pr in lista],
-                        on_captcha=lambda n: _notify_admin(_bot, f"🔑 Resolva TSE: {n}"),
-                    )
-                    for pr, (t, i) in zip(lista, resultados):
-                        _despachar(_det, _repo, _bot, _ia, pr, "TSE", t, i)
-                        time.sleep(5)
-                finally:
-                    _limpar_temp_playwright()
-            threading.Thread(target=rodar_tse, args=(processos_tse,), daemon=True).start()
+            if tse_thread is not None and tse_thread.is_alive():
+                print("⚠️ TSE anterior ainda rodando — pulando este disparo.")
+            else:
+                def rodar_tse(lista, _bot=bot, _det=detector, _repo=repo, _ia=analisador_ia):
+                    try:
+                        resultados = extrair_tse_stealth_batch(
+                            [(pr['id'], pr['url'], pr['numero']) for pr in lista],
+                            on_captcha=lambda n: _notify_admin(_bot, f"🔑 Resolva TSE: {n}"),
+                        )
+                        for pr, (t, i) in zip(lista, resultados):
+                            _despachar(_det, _repo, _bot, _ia, pr, "TSE", t, i)
+                            time.sleep(5)
+                    finally:
+                        _limpar_temp_playwright()
+                tse_thread = threading.Thread(target=rodar_tse, args=(processos_tse,), daemon=True)
+                tse_thread.start()
 
         print("✅ Ciclo finalizado. Dormindo 2 min...")
         time.sleep(120)

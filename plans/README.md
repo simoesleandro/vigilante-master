@@ -30,7 +30,7 @@ TSE headed+captcha, TJRJ Playwright). Buscam segurança e eficiência máximas.
 
 | Plano | Título | Esforço | Risco | Depende de | Status |
 |-------|--------|---------|-------|------------|--------|
-| 008   | Robustez bot — wizard guard não-texto + retry polling + is_alive TSE | S | LOW | — | TODO |
+| 008   | Robustez bot — wizard guard não-texto + retry polling + is_alive TSE | S | LOW | — | DONE |
 
 ### Fase 4 — Eficiência do Scraping (P2)
 
@@ -59,7 +59,7 @@ TSE headed+captcha, TJRJ Playwright). Buscam segurança e eficiência máximas.
 |-------|--------|---------|-------|------------|--------|
 | 015   | Spike — abstração de Tribunal plugável (desbloqueia TRF/TRT) | L (spike M) | MED | 008,009,014 | TODO |
 | 016   | Spike — Web CRUD com auth (painel hoje é só log) | M (spike S) | MED | 013 | TODO |
-| 017   | `update_processo` + export/import (preenche o bulk-add perdido) | M | LOW | 006,002 | TODO |
+| 017   | `update_processo` + export/import (preenche o bulk-add perdido) | M | LOW | 006,002 | DONE |
 | 018   | Limpar wording "VM" + spike WinSW (deploy como serviço Windows) | S+M | LOW/MED | — | TODO |
 
 Status: TODO | IN PROGRESS | DONE | BLOCKED (motivo) | REJECTED (motivo)
