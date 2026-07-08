@@ -22,9 +22,9 @@ TSE headed+captcha, TJRJ Playwright). Buscam segurança e eficiência máximas.
 
 | Plano | Título | Esforço | Risco | Depende de | Status |
 |-------|--------|---------|-------|------------|--------|
-| 006   | Confiabilidade SQLite: WAL + `busy_timeout` + `try/finally` | M | LOW | — | TODO |
-| 005   | Proteger resumo: guard anti-vazio + coluna `resumo_evolutivo` separada | M | LOW/MED | 006 | TODO |
-| 007   | Limitar `fila_web` (queue com `maxsize`) | S | LOW | — | TODO |
+| 006   | Confiabilidade SQLite: WAL + `busy_timeout` + `try/finally` | M | LOW | — | DONE |
+| 005   | Proteger resumo: guard anti-vazio + coluna `resumo_evolutivo` separada | M | LOW/MED | 006 | DONE |
+| 007   | Limitar `fila_web` (queue com `maxsize`) | S | LOW | — | DONE |
 
 ### Fase 3 — Robustez do Bot (P2)
 

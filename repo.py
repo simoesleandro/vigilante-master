@@ -88,7 +88,11 @@ class ProcessoRepo:
         self._inicializar_banco()
 
     def _conn(self) -> sqlite3.Connection:
-        return self._mem_conn if self._mem_conn is not None else sqlite3.connect(self._db_path)
+        if self._mem_conn is not None:
+            return self._mem_conn
+        conn = sqlite3.connect(self._db_path, timeout=5.0)
+        conn.execute("PRAGMA busy_timeout=5000")
+        return conn
 
     def _close(self, conn: sqlite3.Connection) -> None:
         if self._mem_conn is None:
@@ -98,6 +102,12 @@ class ProcessoRepo:
         try:
             conn = self._conn()
             cursor = conn.cursor()
+
+            if self._mem_conn is None:
+                try:
+                    cursor.execute("PRAGMA journal_mode=WAL")
+                except Exception:
+                    pass
 
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS processos (
@@ -109,7 +119,8 @@ class ProcessoRepo:
                     parte_nome TEXT,
                     classe TEXT,
                     resumo_inicial TEXT,
-                    ultimo_andamento TEXT
+                    ultimo_andamento TEXT,
+                    resumo_evolutivo TEXT
                 )
             ''')
 
@@ -118,6 +129,12 @@ class ProcessoRepo:
                 conn.commit()
             except sqlite3.OperationalError:
                 pass
+
+            try:
+                cursor.execute("ALTER TABLE processos ADD COLUMN resumo_evolutivo TEXT")
+                conn.commit()
+            except sqlite3.OperationalError:
+                pass  # coluna já existe
 
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS historico_contexto (
@@ -143,101 +160,112 @@ class ProcessoRepo:
                     )
                 conn.commit()
                 print("✅ Todos os processos migrados com sucesso!")
-
-            self._close(conn)
         except Exception as e:
             print(f"❌ Erro crítico ao inicializar o banco: {e}")
+        finally:
+            self._close(conn)
 
     def get_processo(self, pid: str) -> Optional[dict]:
+        conn = self._conn()
         try:
-            conn = self._conn()
             cursor = conn.cursor()
             cursor.execute(
-                "SELECT pid, numero, url, tribunal, parte_label, parte_nome, classe, resumo_inicial, ultimo_andamento "
+                "SELECT pid, numero, url, tribunal, parte_label, parte_nome, classe, "
+                "resumo_inicial, ultimo_andamento, resumo_evolutivo "
                 "FROM processos WHERE pid = ?",
                 (pid,),
             )
             row = cursor.fetchone()
-            self._close(conn)
             if row:
+                resumo_final = row[9] if row[9] else row[7]   # evoluído senão inicial
                 return {
                     "id": row[0], "numero": row[1], "url": row[2], "tribunal": row[3],
                     "parte_label": row[4], "parte_nome": row[5], "classe": row[6],
-                    "resumo": row[7], "ultimo_andamento": row[8],
+                    "resumo": resumo_final, "ultimo_andamento": row[8],
                 }
         except Exception as e:
             print(f"❌ Erro ao buscar o processo {pid}: {e}")
+        finally:
+            self._close(conn)
         return None
 
     def list_processos(self, tribunal: str) -> list:
         lista = []
+        conn = self._conn()
         try:
-            conn = self._conn()
             cursor = conn.cursor()
             cursor.execute(
-                "SELECT pid, numero, url, parte_label, parte_nome, classe, resumo_inicial, ultimo_andamento "
+                "SELECT pid, numero, url, parte_label, parte_nome, classe, resumo_inicial, ultimo_andamento, resumo_evolutivo "
                 "FROM processos WHERE tribunal = ?",
                 (tribunal,),
             )
             for row in cursor.fetchall():
+                resumo_final = row[8] if row[8] else row[6]   # evoluído senão inicial
                 lista.append({
                     "id": row[0], "numero": row[1], "url": row[2],
                     "parte_label": row[3], "parte_nome": row[4], "classe": row[5],
-                    "resumo": row[6], "ultimo_andamento": row[7],
+                    "resumo": resumo_final, "ultimo_andamento": row[7],
                 })
-            self._close(conn)
         except Exception as e:
             print(f"❌ Erro ao buscar do {tribunal}: {e}")
+        finally:
+            self._close(conn)
         return lista
 
     def list_todos(self) -> list:
         lista = []
+        conn = self._conn()
         try:
-            conn = self._conn()
             cursor = conn.cursor()
             cursor.execute(
                 "SELECT pid, tribunal, numero, classe FROM processos ORDER BY tribunal, pid"
             )
             lista = cursor.fetchall()
-            self._close(conn)
         except Exception as e:
             print(f"❌ Erro ao listar processos: {e}")
+        finally:
+            self._close(conn)
         return lista
 
     def save_andamento(self, pid: str, txt: str) -> None:
+        conn = self._conn()
         try:
-            conn = self._conn()
             cursor = conn.cursor()
             cursor.execute(
                 "UPDATE processos SET ultimo_andamento = ? WHERE pid = ?", (txt, pid)
             )
             conn.commit()
-            self._close(conn)
         except Exception as e:
             print(f"❌ Erro ao salvar andamento de {pid}: {e}")
+        finally:
+            self._close(conn)
 
     def save_resumo(self, pid: str, resumo: str) -> None:
+        if not resumo or not resumo.strip():
+            print(f"⚠️ save_resumo({pid}): resumo vazio ignorado (IA falhou?) — resumo anterior preservado.")
+            return
+        conn = self._conn()
         try:
-            conn = self._conn()
             cursor = conn.cursor()
             cursor.execute(
-                "UPDATE processos SET resumo_inicial = ? WHERE pid = ?", (resumo, pid)
+                "UPDATE processos SET resumo_evolutivo = ? WHERE pid = ?", (resumo, pid)
             )
             conn.commit()
-            self._close(conn)
         except Exception as e:
             print(f"❌ Erro ao salvar resumo de {pid}: {e}")
+        finally:
+            self._close(conn)
 
     def pid_exists(self, pid: str) -> bool:
+        conn = self._conn()
         try:
-            conn = self._conn()
             cursor = conn.cursor()
             cursor.execute("SELECT pid FROM processos WHERE pid = ?", (pid,))
-            existe = cursor.fetchone() is not None
-            self._close(conn)
-            return existe
+            return cursor.fetchone() is not None
         except Exception as e:
             print(f"❌ Erro ao verificar ID {pid}: {e}")
+        finally:
+            self._close(conn)
         return False
 
     def add_processo(
@@ -251,8 +279,8 @@ class ProcessoRepo:
         classe: str,
         resumo: str,
     ) -> None:
+        conn = self._conn()
         try:
-            conn = self._conn()
             cursor = conn.cursor()
             cursor.execute(
                 '''INSERT INTO processos
@@ -261,45 +289,48 @@ class ProcessoRepo:
                 (pid, numero, url, tribunal, parte_label, parte_nome, classe, resumo),
             )
             conn.commit()
-            self._close(conn)
         except Exception as e:
             print(f"❌ Erro ao inserir processo {pid}: {e}")
+        finally:
+            self._close(conn)
 
     def delete_processo(self, pid: str) -> None:
+        conn = self._conn()
         try:
-            conn = self._conn()
             cursor = conn.cursor()
             cursor.execute("DELETE FROM processos WHERE pid = ?", (pid,))
             cursor.execute("DELETE FROM historico_contexto WHERE pid = ?", (pid,))
             conn.commit()
-            self._close(conn)
         except Exception as e:
             print(f"❌ Erro ao remover processo {pid}: {e}")
+        finally:
+            self._close(conn)
 
     def add_contexto(self, pid: str, data_hora: str, texto: str) -> None:
+        conn = self._conn()
         try:
-            conn = self._conn()
             cursor = conn.cursor()
             cursor.execute(
                 "INSERT INTO historico_contexto (pid, data_hora, texto) VALUES (?, ?, ?)",
                 (pid, data_hora, texto),
             )
             conn.commit()
-            self._close(conn)
         except Exception as e:
             print(f"❌ Erro ao salvar contexto de {pid}: {e}")
+        finally:
+            self._close(conn)
 
     def get_historico_contexto(self, pid: str) -> list:
+        conn = self._conn()
         try:
-            conn = self._conn()
             cursor = conn.cursor()
             cursor.execute(
                 "SELECT data_hora, texto FROM historico_contexto WHERE pid = ? ORDER BY id ASC",
                 (pid,),
             )
-            registros = cursor.fetchall()
-            self._close(conn)
-            return registros
+            return cursor.fetchall()
         except Exception as e:
             print(f"❌ Erro ao ler histórico de {pid}: {e}")
+        finally:
+            self._close(conn)
         return []

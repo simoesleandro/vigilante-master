@@ -4,7 +4,7 @@ import sys
 sys.__stdout__.reconfigure(encoding='utf-8', write_through=True)
 sys.__stderr__.reconfigure(encoding='utf-8', write_through=True)
 
-fila_web: queue.Queue = queue.Queue()
+fila_web: queue.Queue = queue.Queue(maxsize=2000)
 
 
 class CloneTerminal:
@@ -16,7 +16,10 @@ class CloneTerminal:
         self.terminal_original.flush()
         if mensagem.strip():
             msg_segura = mensagem.replace('\n', '').replace('\r', '')
-            fila_web.put(msg_segura)
+            try:
+                fila_web.put_nowait(msg_segura)
+            except queue.Full:
+                pass  # painel de log é lossy; descarta linha antiga virtual
 
     def flush(self):
         self.terminal_original.flush()

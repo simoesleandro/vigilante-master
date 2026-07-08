@@ -67,3 +67,20 @@ def test_delete_processo_remove_contexto_associado(repo):
     repo.add_contexto("TJRJ_1", "01/01/2026 10:00", "Nota")
     repo.delete_processo("TJRJ_1")
     assert repo.get_historico_contexto("TJRJ_1") == []
+
+
+def test_save_resumo_round_trip_evolutivo(repo):
+    repo.save_resumo("TJRJ_1", "Resumo evoluido pela IA")
+    proc = repo.get_processo("TJRJ_1")
+    assert proc["resumo"] == "Resumo evoluido pela IA"
+
+
+def test_save_resumo_vazio_e_ignorado(repo):
+    # Pega o resumo inicial do seed (TJRJ_1)
+    antes = repo.get_processo("TJRJ_1")["resumo"]
+    assert antes, "seed sem resumo_inicial?"
+    # Tenta gravar vazio
+    repo.save_resumo("TJRJ_1", "")
+    repo.save_resumo("TJRJ_1", "   ")
+    depois = repo.get_processo("TJRJ_1")["resumo"]
+    assert depois == antes, f"guard falhou: resumo mudou para {depois!r}"
