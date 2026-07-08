@@ -8,7 +8,7 @@ from playwright.sync_api import PlaywrightContextManager
 from selenium.webdriver.common.by import By
 
 lock_navegador = threading.Lock()
-VERSAO_CHROME_VM = 148
+VERSAO_CHROME_VM = 150
 
 
 def exterminar_zumbis():
