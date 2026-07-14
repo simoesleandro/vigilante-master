@@ -230,6 +230,36 @@ def extrair_stf_stealth_batch(
 
 # ── TSE ─────────────────────────────────────────────────────────────────────
 
+def _esperar_card_estavel(card, timeout: int = 30, poll: float = 2.0) -> bool:
+    """Espera o conteudo do card parar de mudar (2 leituras consecutivas identicas).
+
+    A SPA do TSE renderiza andamentos de forma incremental apos o captcha:
+    comeca com 1-2 itens visiveis e vai adicionando os demais. Sem essa
+    espera, o `card.text` no momento da extracao captura um estado parcial
+    (1, 3, 5, 7 itens) que varia entre ciclos -> o Detector compara 7 itens
+    contra 5 e dispara Mudanca falsa.
+
+    Retorna True se estabilizou dentro do timeout, False se atingiu o limite
+    (nesse caso o caller ainda pode usar o ultimo texto lido, com cautela).
+    """
+    t_inicio = time.time()
+    texto_anterior = None
+    while time.time() - t_inicio < timeout:
+        try:
+            texto_atual = card.text
+        except Exception:
+            return False
+        if (
+            texto_anterior is not None
+            and texto_atual == texto_anterior
+            and len(texto_atual.strip()) > 50
+        ):
+            return True
+        texto_anterior = texto_atual
+        time.sleep(poll)
+    return False
+
+
 def extrair_tse_stealth_batch(
     processos: list,
     on_captcha=None,
@@ -275,7 +305,10 @@ def extrair_tse_stealth_batch(
                         print(f'      ❌ {id_nome}: Tempo esgotado aguardando resolucao do captcha.')
                         continue
 
-                    time.sleep(2)
+                    estabilizou = _esperar_card_estavel(card_alvo, timeout=30, poll=2.0)
+                    if not estabilizou:
+                        print(f'      ⚠️ {id_nome}: card nao estabilizou em 30s — extraindo mesmo assim.')
+
                     print_path = f'print_{id_nome}.png'
                     card_alvo.screenshot(print_path)
 
@@ -284,6 +317,8 @@ def extrair_tse_stealth_batch(
                         for l in card_alvo.text.split('\n')
                         if len(l.strip()) > 3 and l.strip().lower() != 'autorenew'
                     ]
+                    n_itens = max(0, (len(linhas) - 1) // 2)
+                    print(f'   📊 {id_nome}: extraiu {len(linhas)} linhas ({n_itens} itens)')
                     resultados[idx] = ('\n'.join(linhas[:15]), print_path)
                 except Exception as e:
                     print(f'   ❌ Erro ao extrair TSE ({id_nome}): {e}')
