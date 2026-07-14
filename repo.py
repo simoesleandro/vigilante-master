@@ -136,6 +136,12 @@ class ProcessoRepo:
             except sqlite3.OperationalError:
                 pass  # coluna já existe
 
+            try:
+                cursor.execute("ALTER TABLE processos ADD COLUMN ultimo_fingerprint TEXT")
+                conn.commit()
+            except sqlite3.OperationalError:
+                pass  # coluna já existe (adicionada em jul/2026 — comparação por hash)
+
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS historico_contexto (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -171,7 +177,7 @@ class ProcessoRepo:
             cursor = conn.cursor()
             cursor.execute(
                 "SELECT pid, numero, url, tribunal, parte_label, parte_nome, classe, "
-                "resumo_inicial, ultimo_andamento, resumo_evolutivo "
+                "resumo_inicial, ultimo_andamento, resumo_evolutivo, ultimo_fingerprint "
                 "FROM processos WHERE pid = ?",
                 (pid,),
             )
@@ -182,6 +188,7 @@ class ProcessoRepo:
                     "id": row[0], "numero": row[1], "url": row[2], "tribunal": row[3],
                     "parte_label": row[4], "parte_nome": row[5], "classe": row[6],
                     "resumo": resumo_final, "ultimo_andamento": row[8],
+                    "ultimo_fingerprint": row[10],
                 }
         except Exception as e:
             print(f"❌ Erro ao buscar o processo {pid}: {e}")
@@ -195,7 +202,8 @@ class ProcessoRepo:
         try:
             cursor = conn.cursor()
             cursor.execute(
-                "SELECT pid, numero, url, parte_label, parte_nome, classe, resumo_inicial, ultimo_andamento, resumo_evolutivo "
+                "SELECT pid, numero, url, parte_label, parte_nome, classe, resumo_inicial, "
+                "ultimo_andamento, resumo_evolutivo, ultimo_fingerprint "
                 "FROM processos WHERE tribunal = ?",
                 (tribunal,),
             )
@@ -205,6 +213,7 @@ class ProcessoRepo:
                     "id": row[0], "numero": row[1], "url": row[2],
                     "parte_label": row[3], "parte_nome": row[4], "classe": row[5],
                     "resumo": resumo_final, "ultimo_andamento": row[7],
+                    "ultimo_fingerprint": row[9],
                 })
         except Exception as e:
             print(f"❌ Erro ao buscar do {tribunal}: {e}")
@@ -227,13 +236,20 @@ class ProcessoRepo:
             self._close(conn)
         return lista
 
-    def save_andamento(self, pid: str, txt: str) -> None:
+    def save_andamento(self, pid: str, txt: str, fingerprint: Optional[str] = None) -> None:
         conn = self._conn()
         try:
             cursor = conn.cursor()
-            cursor.execute(
-                "UPDATE processos SET ultimo_andamento = ? WHERE pid = ?", (txt, pid)
-            )
+            if fingerprint is not None:
+                cursor.execute(
+                    "UPDATE processos SET ultimo_andamento = ?, ultimo_fingerprint = ? "
+                    "WHERE pid = ?",
+                    (txt, fingerprint, pid),
+                )
+            else:
+                cursor.execute(
+                    "UPDATE processos SET ultimo_andamento = ? WHERE pid = ?", (txt, pid)
+                )
             conn.commit()
         except Exception as e:
             print(f"❌ Erro ao salvar andamento de {pid}: {e}")

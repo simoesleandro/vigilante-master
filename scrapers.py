@@ -1,6 +1,10 @@
+import hashlib
+import json
 import os
+import re
 import time
 import threading
+from pathlib import Path
 from typing import Optional, Tuple
 
 import undetected_chromedriver as uc
@@ -11,6 +15,9 @@ from selenium.webdriver.support import expected_conditions as EC
 
 lock_navegador = threading.Lock()
 VERSAO_CHROME_VM = 150
+LOG_DIAG_DIR = Path("logs_tse_diag")
+# Data no formato exibido pelo TSE: "DD/MM/YYYY, HH:MM:SS" (com virgula entre data e hora)
+_DATA_PATTERN = re.compile(r"^\d{2}/\d{2}/\d{4},\s\d{2}:\d{2}:\d{2}$")
 
 
 def exterminar_zumbis():
@@ -230,8 +237,8 @@ def extrair_stf_stealth_batch(
 
 # ── TSE ─────────────────────────────────────────────────────────────────────
 
-def _esperar_card_estavel(card, timeout: int = 30, poll: float = 2.0) -> bool:
-    """Espera o conteudo do card parar de mudar (2 leituras consecutivas identicas).
+def _esperar_card_estavel(card, timeout: int = 30, poll: float = 2.0, leituras: int = 3) -> bool:
+    """Espera o conteudo do card parar de mudar (N leituras consecutivas identicas).
 
     A SPA do TSE renderiza andamentos de forma incremental apos o captcha:
     comeca com 1-2 itens visiveis e vai adicionando os demais. Sem essa
@@ -239,11 +246,15 @@ def _esperar_card_estavel(card, timeout: int = 30, poll: float = 2.0) -> bool:
     (1, 3, 5, 7 itens) que varia entre ciclos -> o Detector compara 7 itens
     contra 5 e dispara Mudanca falsa.
 
+    Por padrao exige 3 leituras consecutivas identicas (era 2 ate jul/2026
+    mas ainda gerava falsos positivos esporadicos).
+
     Retorna True se estabilizou dentro do timeout, False se atingiu o limite
     (nesse caso o caller ainda pode usar o ultimo texto lido, com cautela).
     """
     t_inicio = time.time()
     texto_anterior = None
+    contador_estavel = 0
     while time.time() - t_inicio < timeout:
         try:
             texto_atual = card.text
@@ -254,10 +265,73 @@ def _esperar_card_estavel(card, timeout: int = 30, poll: float = 2.0) -> bool:
             and texto_atual == texto_anterior
             and len(texto_atual.strip()) > 50
         ):
-            return True
+            contador_estavel += 1
+            if contador_estavel >= leituras - 1:
+                return True
+        else:
+            contador_estavel = 0
         texto_anterior = texto_atual
         time.sleep(poll)
     return False
+
+
+def _fingerprint_itens(linhas_filtradas: list) -> str:
+    """Hash MD5 dos itens (pares titulo+data), ignorando header e qualquer linha extra.
+
+    O texto bruto do card pode conter elementos dinamicos (timestamp, ID de
+    sessao, etc.) que mudam entre ciclos mas nao representam movimento real.
+    Esta funcao extrai apenas os pares titulo+data dos andamentos e calcula
+    um hash estavel. O Detector compara o hash, nao o texto bruto.
+
+    O loop para no primeiro par cuja segunda linha nao casa com o padrao de
+    data do TSE (DD/MM/YYYY, HH:MM:SS). Isso ignora com seguranca rodapes
+    tipo "Ultima consulta: ..." ou "Sessao: ..." que nao sao movimentos.
+    """
+    itens = []
+    pares = linhas_filtradas[1:]  # pula o header "Movimentos"
+    i = 0
+    while i + 1 < len(pares):
+        titulo = pares[i]
+        data = pares[i + 1]
+        if not _DATA_PATTERN.match(data):
+            # Nao parece (titulo, data) -> provavelmente rodape
+            break
+        itens.append(f"{titulo}|{data}")
+        i += 2
+    base = "\n".join(itens)
+    return hashlib.md5(base.encode("utf-8")).hexdigest()
+
+
+def _salvar_diag_tse(id_nome: str, texto_card_bruto: str, linhas_filtradas: list,
+                     fingerprint: str, mudou: bool) -> None:
+    """Salva o texto bruto e o fingerprint em arquivo de log para diagnostico.
+
+    Cada extracao gera um arquivo .jsonl em logs_tse_diag/ com:
+    - timestamp
+    - pid
+    - texto_card_bruto (texto completo do card apos estabilizacao)
+    - linhas_filtradas (apos filtro > 3 chars, != autorenew)
+    - fingerprint (hash dos itens)
+    - mudou (True se o fingerprint difere do anterior)
+
+    Quando o usuario reportar falso positivo, basta comparar os arquivos
+    recentes para identificar o que esta variando.
+    """
+    try:
+        LOG_DIAG_DIR.mkdir(exist_ok=True)
+        arq = LOG_DIAG_DIR / f"{id_nome}.jsonl"
+        registro = {
+            "ts": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "pid": id_nome,
+            "texto_bruto_len": len(texto_card_bruto),
+            "linhas_filtradas": linhas_filtradas,
+            "fingerprint": fingerprint,
+            "mudou": mudou,
+        }
+        with open(arq, "a", encoding="utf-8") as f:
+            f.write(json.dumps(registro, ensure_ascii=False) + "\n")
+    except Exception as e:
+        print(f"   ⚠️ Falha ao salvar diag TSE: {e}")
 
 
 def extrair_tse_stealth_batch(
@@ -305,21 +379,26 @@ def extrair_tse_stealth_batch(
                         print(f'      ❌ {id_nome}: Tempo esgotado aguardando resolucao do captcha.')
                         continue
 
-                    estabilizou = _esperar_card_estavel(card_alvo, timeout=30, poll=2.0)
+                    estabilizou = _esperar_card_estavel(card_alvo, timeout=30, poll=2.0, leituras=3)
                     if not estabilizou:
                         print(f'      ⚠️ {id_nome}: card nao estabilizou em 30s — extraindo mesmo assim.')
 
                     print_path = f'print_{id_nome}.png'
                     card_alvo.screenshot(print_path)
 
+                    texto_bruto = card_alvo.text
                     linhas = [
                         l.strip()
-                        for l in card_alvo.text.split('\n')
+                        for l in texto_bruto.split('\n')
                         if len(l.strip()) > 3 and l.strip().lower() != 'autorenew'
                     ]
+                    fp = _fingerprint_itens(linhas)
                     n_itens = max(0, (len(linhas) - 1) // 2)
-                    print(f'   📊 {id_nome}: extraiu {len(linhas)} linhas ({n_itens} itens)')
-                    resultados[idx] = ('\n'.join(linhas[:15]), print_path)
+                    print(f'   📊 {id_nome}: extraiu {len(linhas)} linhas ({n_itens} itens) fp={fp[:8]}')
+
+                    _salvar_diag_tse(id_nome, texto_bruto, linhas, fp, mudou=False)
+
+                    resultados[idx] = ('\n'.join(linhas[:15]), fp, print_path)
                 except Exception as e:
                     print(f'   ❌ Erro ao extrair TSE ({id_nome}): {e}')
 

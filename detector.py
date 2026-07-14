@@ -6,6 +6,7 @@ from typing import Optional, Union
 class AndamentoInicial:
     pid: str
     txt_novo: str
+    fingerprint: Optional[str] = None
 
 
 @dataclass
@@ -15,6 +16,7 @@ class Mudanca:
     tribunal: str
     proc: dict
     img: Optional[str]
+    fingerprint: Optional[str] = None
 
 
 @dataclass
@@ -36,6 +38,7 @@ class Detector:
         tribunal: str,
         txt: Optional[str],
         img: Optional[str],
+        fingerprint: Optional[str] = None,
     ) -> Union[AndamentoInicial, Mudanca, FalhaCaptura, None]:
         pid = proc['id']
 
@@ -51,14 +54,30 @@ class Detector:
 
         self._falhas[pid] = 0
         txt_novo = txt.strip()
+        fp_antigo = proc.get('ultimo_fingerprint')
+
+        # Se temos fingerprint novo E antigo, comparacao por hash (robusto contra
+        # conteudo dinamico como timestamps ou IDs de sessao que variam entre
+        # page-loads). Caso contrario, fallback para comparacao de texto.
+        if fingerprint and fp_antigo:
+            if fingerprint != fp_antigo:
+                return Mudanca(
+                    pid=pid, txt_novo=txt_novo, tribunal=tribunal, proc=proc, img=img,
+                    fingerprint=fingerprint,
+                )
+            return None
+
         txt_antigo = proc.get('ultimo_andamento')
         if txt_antigo:
             txt_antigo = txt_antigo.strip()
 
-        if not txt_antigo:
-            return AndamentoInicial(pid=pid, txt_novo=txt_novo)
+        if not txt_antigo and not fp_antigo:
+            return AndamentoInicial(pid=pid, txt_novo=txt_novo, fingerprint=fingerprint)
 
         if txt_novo != txt_antigo:
-            return Mudanca(pid=pid, txt_novo=txt_novo, tribunal=tribunal, proc=proc, img=img)
+            return Mudanca(
+                pid=pid, txt_novo=txt_novo, tribunal=tribunal, proc=proc, img=img,
+                fingerprint=fingerprint,
+            )
 
         return None

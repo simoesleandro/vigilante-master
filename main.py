@@ -182,8 +182,8 @@ def _limpar_chrome_cache() -> None:
 
 # ── Orchestration ─────────────────────────────────────────────────────────────
 
-def _despachar(detector, repo, bot, analisador, proc, tribunal, txt, img):
-    resultado = detector.processar(proc, tribunal, txt, img)
+def _despachar(detector, repo, bot, analisador, proc, tribunal, txt, img, fingerprint=None):
+    resultado = detector.processar(proc, tribunal, txt, img, fingerprint=fingerprint)
     pid = proc['id']
 
     if resultado is None:
@@ -203,13 +203,13 @@ def _despachar(detector, repo, bot, analisador, proc, tribunal, txt, img):
         return
 
     if isinstance(resultado, AndamentoInicial):
-        repo.save_andamento(pid, resultado.txt_novo)
+        repo.save_andamento(pid, resultado.txt_novo, fingerprint=resultado.fingerprint)
         print(f"      📁 {pid}: Base inicial salva no Banco de Dados.")
         return
 
     if isinstance(resultado, Mudanca):
         print(f"      🚨 {pid}: MUDANÇA DETECTADA!")
-        repo.save_andamento(pid, resultado.txt_novo)
+        repo.save_andamento(pid, resultado.txt_novo, fingerprint=resultado.fingerprint)
         threading.Thread(
             target=lambda r=resultado, p=proc: repo.save_resumo(
                 r.pid, analisador.resumo_evolutivo(p, r.txt_novo)
@@ -308,8 +308,8 @@ def iniciar_vigilancia():
                             [(pr['id'], pr['url'], pr['numero']) for pr in lista],
                             on_captcha=lambda n: _notify_admin(_bot, f"🔑 Resolva TSE: {n}"),
                         )
-                        for pr, (t, i) in zip(lista, resultados):
-                            _despachar(_det, _repo, _bot, _ia, pr, "TSE", t, i)
+                        for pr, (t, fp, i) in zip(lista, resultados):
+                            _despachar(_det, _repo, _bot, _ia, pr, "TSE", t, i, fingerprint=fp)
                             time.sleep(5)
                     finally:
                         _limpar_temp_playwright()
