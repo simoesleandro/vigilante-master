@@ -16,6 +16,10 @@ from selenium.webdriver.support import expected_conditions as EC
 lock_navegador = threading.Lock()
 VERSAO_CHROME_VM = 150
 LOG_DIAG_DIR = Path("logs_tse_diag")
+# Perfil persistente do Chrome pro TSE: sessao "nova" (pasta temp descartada a
+# cada ciclo) e um sinal forte de automacao pro hCaptcha. Reusar um perfil com
+# cookies/historico acumulados ao longo do tempo parece mais com um usuario real.
+PERFIL_TSE_DIR = Path("chrome_profile_tse")
 # Data no formato exibido pelo TSE: "DD/MM/YYYY, HH:MM:SS" (com virgula entre data e hora)
 _DATA_PATTERN = re.compile(r"^\d{2}/\d{2}/\d{4},\s\d{2}:\d{2}:\d{2}$")
 
@@ -342,12 +346,17 @@ def extrair_tse_stealth_batch(
         n = len(processos)
         print(f'   📡 TSE: Abrindo navegador para {n} processo(s)...')
         driver = None
-        resultados = [(None, None)] * n
+        resultados = [(None, None, None)] * n
         try:
+            PERFIL_TSE_DIR.mkdir(exist_ok=True)
             options = uc.ChromeOptions()
             options.add_argument('--disable-gpu')
             options.page_load_strategy = 'none'
-            driver = uc.Chrome(options=options, version_main=VERSAO_CHROME_VM)
+            driver = uc.Chrome(
+                options=options,
+                version_main=VERSAO_CHROME_VM,
+                user_data_dir=str(PERFIL_TSE_DIR.resolve()),
+            )
 
             for idx, (id_nome, url, numero) in enumerate(processos):
                 print(f'   📡 {id_nome}: Acessando TSE...')

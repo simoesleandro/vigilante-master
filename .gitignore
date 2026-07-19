@@ -11,6 +11,7 @@ estado_*.txt
 bot_run.log
 hello.log
 logs_tse_diag/
+chrome_profile_tse/
 
 # Imagens geradas em runtime
 *.png
