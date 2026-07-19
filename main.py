@@ -71,7 +71,11 @@ def _notify_admin(bot, texto: str) -> None:
     try:
         bot.send_message(ADMIN_ID, texto, parse_mode="HTML")
     except Exception as e:
-        print(f"❌ Erro ao notificar admin: {e}")
+        print(f"⚠️ Erro ao notificar admin (tentativa 1): {e} — tentando de novo...")
+        try:
+            bot.send_message(ADMIN_ID, texto, parse_mode="HTML", timeout=30)
+        except Exception as e2:
+            print(f"❌ Erro ao notificar admin (tentativa 2): {e2}")
 API_KEY_GEMINI = os.getenv("API_KEY_GEMINI")
 
 
