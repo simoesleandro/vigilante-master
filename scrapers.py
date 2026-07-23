@@ -191,7 +191,11 @@ def _criar_driver_stf():
 
 def _raspar_stf(driver, id_nome: str, url: str) -> Tuple[Optional[str], Optional[str]]:
     print(f'   📡 {id_nome}: Acessando STF...')
-    driver.get(url)
+    # A pagina abre por padrao na aba "Informacoes"; sem o hash abaixo a aba
+    # "Andamentos" so fica ativa apos clique, e o find_elements no final
+    # sempre retorna vazio -> FalhaCaptura constante.
+    url_andamentos = url if '#andamentos' in url else url + '#andamentos'
+    driver.get(url_andamentos)
     try:
         WebDriverWait(driver, 15).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, '.andamento-item, app-andamento'))
