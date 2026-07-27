@@ -383,6 +383,8 @@ def extrair_tse_stealth_batch(
                 try:
                     if on_captcha:
                         on_captcha(numero)
+                    driver.get('about:blank')
+                    time.sleep(0.5)
                     driver.get(url)
 
                     card_alvo = None
