@@ -110,16 +110,19 @@ _LIMPEZA_PADROES = [
     "scoped_dir*",
 ]
 
-def _limpar_temp_playwright() -> None:
+def _limpar_temp_playwright(min_age_seconds: int = 600) -> None:
     temp = os.environ.get("TEMP") or os.environ.get("TMP") or ""
     if not temp or not os.path.isdir(temp):
         return
     removidos = 0
+    agora = time.time()
     for padrao in _LIMPEZA_PADROES:
         for pasta in glob.glob(os.path.join(temp, padrao)):
             try:
-                shutil.rmtree(pasta, ignore_errors=True)
-                removidos += 1
+                idade = agora - os.path.getmtime(pasta)
+                if idade > min_age_seconds:
+                    shutil.rmtree(pasta, ignore_errors=True)
+                    removidos += 1
             except Exception:
                 pass
     if removidos:
