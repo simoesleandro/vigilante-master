@@ -233,12 +233,29 @@ def extrair_stf_stealth_batch(
                 try:
                     resultados[idx] = _raspar_stf(driver, id_nome, url)
                 except Exception as e:
-                    print(f'   ❌ Erro detalhado no STF ({id_nome}): {e}')
+                    err_msg = str(e).lower()
+                    if any(k in err_msg for k in ['no such window', 'web view not found', 'target window already closed']):
+                        print(f'   ⚠️ STF ({id_nome}): janela/DevTools desconectado. Recriando driver...')
+                        if driver:
+                            try:
+                                driver.quit()
+                            except Exception:
+                                pass
+                        driver = _criar_driver_stf()
+                        try:
+                            resultados[idx] = _raspar_stf(driver, id_nome, url)
+                        except Exception as e2:
+                            print(f'   ❌ Erro detalhado no STF ({id_nome}) após retry: {e2}')
+                    else:
+                        print(f'   ❌ Erro detalhado no STF ({id_nome}): {e}')
         except Exception as e:
             print(f'   ❌ Erro fatal STF batch: {e}')
         finally:
             if driver:
-                driver.quit()
+                try:
+                    driver.quit()
+                except Exception:
+                    pass
         return resultados
 
 
