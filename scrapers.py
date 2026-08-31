@@ -14,7 +14,28 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 lock_navegador = threading.Lock()
-VERSAO_CHROME_VM = 150
+
+def obter_versao_chrome() -> Optional[int]:
+    try:
+        import winreg
+        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r'Software\Google\Chrome\BLBeacon')
+        ver, _ = winreg.QueryValueEx(key, 'version')
+        winreg.CloseKey(key)
+        return int(ver.split('.')[0])
+    except Exception:
+        pass
+    try:
+        import winreg
+        key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r'SOFTWARE\WOW6432Node\Google\Update\Clients\{8A69D345-D564-463c-AFF1-A69D9E530F96}')
+        ver, _ = winreg.QueryValueEx(key, 'pv')
+        winreg.CloseKey(key)
+        return int(ver.split('.')[0])
+    except Exception:
+        pass
+    return None
+
+VERSAO_CHROME = obter_versao_chrome()
+VERSAO_CHROME_VM = VERSAO_CHROME  # Alias retrocompatível
 LOG_DIAG_DIR = Path("logs_tse_diag")
 # Perfil persistente do Chrome pro TSE: sessao "nova" (pasta temp descartada a
 # cada ciclo) e um sinal forte de automacao pro hCaptcha. Reusar um perfil com
@@ -185,7 +206,7 @@ def _criar_driver_stf():
     options.add_argument('--window-size=1920,1080')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
-    return uc.Chrome(options=options, version_main=VERSAO_CHROME_VM)
+    return uc.Chrome(options=options, version_main=VERSAO_CHROME)
 
 
 def _raspar_stf(driver, id_nome: str, url: str) -> Tuple[Optional[str], Optional[str]]:
@@ -374,7 +395,7 @@ def extrair_tse_stealth_batch(
             options.page_load_strategy = 'none'
             driver = uc.Chrome(
                 options=options,
-                version_main=VERSAO_CHROME_VM,
+                version_main=VERSAO_CHROME,
                 user_data_dir=str(PERFIL_TSE_DIR.resolve()),
             )
 
