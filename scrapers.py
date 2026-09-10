@@ -113,7 +113,12 @@ def _raspar_tjrj(driver, id_nome: str, url: str, numero: Optional[str] = None) -
 
         tabela = next(t for t in tables if 'Data' in t.text)
         print_path = f"print_{id_nome}.png"
-        driver.save_screenshot(print_path)
+        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", tabela)
+        time.sleep(1)
+        try:
+            tabela.screenshot(print_path)
+        except Exception:
+            driver.save_screenshot(print_path)
 
         linhas = tabela.find_elements(By.TAG_NAME, "tr")
         txt_linhas = [l.text.strip() for l in linhas[1:15] if len(l.text.strip()) > 5]
