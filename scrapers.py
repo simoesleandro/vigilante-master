@@ -61,146 +61,129 @@ def exterminar_zumbis():
         pass
 
 
+def _criar_driver_tjrj():
+    options = uc.ChromeOptions()
+    options.add_argument('--disable-gpu')
+    options.add_argument('--window-size=1920,1080')
+    return uc.Chrome(options=options, version_main=VERSAO_CHROME)
+
+
+def _raspar_tjrj(driver, id_nome: str, url: str, numero: Optional[str] = None) -> Tuple[Optional[str], Optional[str]]:
+    print(f"   📡 {id_nome}: Acessando TJRJ...")
+    try:
+        driver.get(url)
+        time.sleep(3)
+
+        tables = driver.find_elements(By.CSS_SELECTOR, "table:has(th)")
+        has_table = any('Data' in t.text for t in tables) if tables else False
+
+        if not has_table:
+            num_proc = numero or ""
+            if not num_proc:
+                m = re.search(r"num_processo=(\d+)", url)
+                if m:
+                    num_proc = m.group(1)
+
+            num_limpo = re.sub(r"\D", "", num_proc)
+            if num_limpo:
+                search_url = "https://eproc2g-cp.tjrj.jus.br/eproc/externo_controlador.php?acao=processo_consulta_publica"
+                driver.get(search_url)
+                time.sleep(2)
+
+                inp = driver.find_element(By.ID, "txtNumProcesso")
+                inp.clear()
+                inp.send_keys(num_limpo)
+
+                btn = (
+                    driver.find_element(By.ID, "sbmNovo")
+                    if driver.find_elements(By.ID, "sbmNovo")
+                    else driver.find_element(By.CSS_SELECTOR, "button[type='submit'], input[type='submit']")
+                )
+                btn.click()
+                time.sleep(4)
+
+                tables = driver.find_elements(By.CSS_SELECTOR, "table:has(th)")
+                has_table = any('Data' in t.text for t in tables) if tables else False
+
+        if not has_table:
+            print(f"   ⚠️ {id_nome}: Tabela de andamentos não encontrada (link expirado ou bloqueio CAPTCHA).")
+            pasta_atual = os.path.dirname(os.path.abspath(__file__))
+            driver.save_screenshot(os.path.join(pasta_atual, f"DEBUG_ERRO_{id_nome}.png"))
+            return None, None
+
+        tabela = next(t for t in tables if 'Data' in t.text)
+        print_path = f"print_{id_nome}.png"
+        driver.save_screenshot(print_path)
+
+        linhas = tabela.find_elements(By.TAG_NAME, "tr")
+        txt_linhas = [l.text.strip() for l in linhas[1:15] if len(l.text.strip()) > 5]
+        txt = "\n".join(txt_linhas)
+        return txt.strip(), print_path
+
+    except Exception as e:
+        print(f"   ❌ Erro ao extrair {id_nome}: {e}")
+        try:
+            pasta_atual = os.path.dirname(os.path.abspath(__file__))
+            driver.save_screenshot(os.path.join(pasta_atual, f"DEBUG_ERRO_{id_nome}.png"))
+        except Exception:
+            pass
+        return None, None
+
+
 def extrair_playwright(
     p_instance: PlaywrightContextManager,
     id_nome: str,
     url: str,
 ) -> Tuple[Optional[str], Optional[str]]:
     with lock_navegador:
-        print(f"   📡 {id_nome}: Acessando TJRJ...")
-
-        nav = None
-        pag = None
+        driver = None
         try:
-            nav = p_instance.chromium.launch(
-                headless=False,
-                args=[
-                    '--headless=new', '--disable-gpu', '--window-size=1920,1080',
-                    '--disable-blink-features=AutomationControlled',
-                ],
-            )
-            ctx = nav.new_context(
-                viewport={'width': 1280, 'height': 1200},
-                user_agent=(
-                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-                    'AppleWebKit/537.36 (KHTML, like Gecko) '
-                    'Chrome/124.0.0.0 Safari/537.36'
-                ),
-            )
-            ctx.add_init_script(
-                "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
-            )
-            pag = ctx.new_page()
-
-            pag.goto(url, timeout=60000, wait_until='domcontentloaded')
-            pag.wait_for_timeout(2000)
-            tabela = pag.locator("table:has(th:has-text('Data'))").first
-            if tabela.count() == 0:
-                print(f"   ⚠️ {id_nome}: Tabela de andamentos não encontrada (link expirado ou bloqueio CAPTCHA).")
-                pasta_atual = os.path.dirname(os.path.abspath(__file__))
-                pag.screenshot(path=os.path.join(pasta_atual, f'DEBUG_ERRO_{id_nome}.png'), full_page=True)
-                return None, None
-            tabela.scroll_into_view_if_needed(timeout=5000)
-
-            primeira_linha = tabela.locator('tr').nth(1)
-            box = primeira_linha.bounding_box()
-            print_path = f'print_{id_nome}.png'
-            pag.screenshot(
-                path=print_path,
-                clip={'x': box['x'], 'y': box['y'] - 5, 'width': 650, 'height': 600},
-            )
-
-            linhas = tabela.locator('tr').all()
-            txt = '\n'.join([l.inner_text().strip() for l in linhas[1:15]])
-            return txt.strip(), print_path
-
-        except Exception as e:
-            print(f'   ❌ Erro ao extrair {id_nome}: {e}')
-            if pag is not None:
-                try:
-                    pasta_atual = os.path.dirname(os.path.abspath(__file__))
-                    caminho_erro = os.path.join(pasta_atual, f'DEBUG_ERRO_{id_nome}.png')
-                    pag.screenshot(path=caminho_erro, full_page=True)
-                except Exception:
-                    pass
-            return None, None
+            driver = _criar_driver_tjrj()
+            return _raspar_tjrj(driver, id_nome, url)
         finally:
-            if nav is not None:
+            if driver:
                 try:
-                    nav.close()
+                    driver.quit()
                 except Exception:
                     pass
-
-
-def _raspar_tjrj(pag, id_nome: str, url: str) -> Tuple[Optional[str], Optional[str]]:
-    print(f"   📡 {id_nome}: Acessando TJRJ...")
-    try:
-        pag.goto(url, timeout=60000, wait_until='domcontentloaded')
-        pag.wait_for_timeout(2000)
-        tabela = pag.locator("table:has(th:has-text('Data'))").first
-        if tabela.count() == 0:
-            print(f"   ⚠️ {id_nome}: Tabela de andamentos não encontrada (link expirado ou bloqueio CAPTCHA).")
-            pasta_atual = os.path.dirname(os.path.abspath(__file__))
-            pag.screenshot(path=os.path.join(pasta_atual, f'DEBUG_ERRO_{id_nome}.png'), full_page=True)
-            return None, None
-        tabela.scroll_into_view_if_needed(timeout=5000)
-        primeira_linha = tabela.locator('tr').nth(1)
-        box = primeira_linha.bounding_box()
-        print_path = f'print_{id_nome}.png'
-        pag.screenshot(path=print_path, clip={'x': box['x'], 'y': box['y'] - 5, 'width': 650, 'height': 600})
-        linhas = tabela.locator('tr').all()
-        txt = '\n'.join([l.inner_text().strip() for l in linhas[1:15]])
-        return txt.strip(), print_path
-    except Exception as e:
-        print(f'   ❌ Erro ao extrair {id_nome}: {e}')
-        try:
-            pag.screenshot(path=os.path.join(os.path.dirname(os.path.abspath(__file__)), f'DEBUG_ERRO_{id_nome}.png'), full_page=True)
-        except Exception:
-            pass
-        return None, None
 
 
 def extrair_playwright_batch(processos: list) -> list:
     with lock_navegador:
         n = len(processos)
         print(f'   📡 TJRJ: Abrindo navegador para {n} processo(s)...')
-        nav = None
+        driver = None
         resultados = [(None, None)] * n
         try:
-            with sync_playwright() as p:
-                nav = p.chromium.launch(
-                    headless=False,
-                    args=[
-                        '--headless=new', '--disable-gpu', '--window-size=1920,1080',
-                        '--disable-blink-features=AutomationControlled',
-                    ],
-                )
-                ctx = nav.new_context(
-                    viewport={'width': 1280, 'height': 1200},
-                    user_agent=(
-                        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-                        'AppleWebKit/537.36 (KHTML, like Gecko) '
-                        'Chrome/124.0.0.0 Safari/537.36'
-                    ),
-                )
-                ctx.add_init_script(
-                    "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
-                )
-                for idx, pr in enumerate(processos):
-                    pag = ctx.new_page()
-                    try:
-                        resultados[idx] = _raspar_tjrj(pag, pr['id'], pr['url'])
-                    finally:
+            driver = _criar_driver_tjrj()
+            for idx, pr in enumerate(processos):
+                id_nome = pr['id'] if isinstance(pr, dict) else pr[0]
+                url = pr['url'] if isinstance(pr, dict) else pr[1]
+                numero = pr.get('numero') if isinstance(pr, dict) and 'numero' in pr else (pr[2] if isinstance(pr, (tuple, list)) and len(pr) > 2 else None)
+                try:
+                    resultados[idx] = _raspar_tjrj(driver, id_nome, url, numero)
+                except Exception as e:
+                    err_msg = str(e).lower()
+                    if any(k in err_msg for k in ['no such window', 'web view not found', 'target window already closed']):
+                        print(f'   ⚠️ TJRJ ({id_nome}): janela/DevTools desconectado. Recriando driver...')
+                        if driver:
+                            try:
+                                driver.quit()
+                            except Exception:
+                                pass
+                        driver = _criar_driver_tjrj()
                         try:
-                            pag.close()
-                        except Exception:
-                            pass
+                            resultados[idx] = _raspar_tjrj(driver, id_nome, url, numero)
+                        except Exception as e2:
+                            print(f'   ❌ Erro detalhado no TJRJ ({id_nome}) após retry: {e2}')
+                    else:
+                        print(f'   ❌ Erro detalhado no TJRJ ({id_nome}): {e}')
         except Exception as e:
             print(f'   ❌ Erro fatal TJRJ batch: {e}')
         finally:
-            if nav:
+            if driver:
                 try:
-                    nav.close()
+                    driver.quit()
                 except Exception:
                     pass
         return resultados

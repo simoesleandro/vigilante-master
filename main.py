@@ -285,7 +285,7 @@ def iniciar_vigilancia():
 
         try:
             resultados_tjrj = extrair_playwright_batch(
-                [{'id': pr['id'], 'url': pr['url']} for pr in processos_tjrj]
+                [{'id': pr['id'], 'url': pr['url'], 'numero': pr['numero']} for pr in processos_tjrj]
             )
             for pr, (t, i) in zip(processos_tjrj, resultados_tjrj):
                 _despachar(detector, repo, bot, analisador_ia, pr, "TJRJ", t, i)
