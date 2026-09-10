@@ -93,9 +93,14 @@ def extrair_playwright(
             pag = ctx.new_page()
 
             pag.goto(url, timeout=60000, wait_until='domcontentloaded')
-            tabela = pag.locator("table:has(th:has-text('Data'))").first
             pag.wait_for_timeout(2000)
-            tabela.scroll_into_view_if_needed()
+            tabela = pag.locator("table:has(th:has-text('Data'))").first
+            if tabela.count() == 0:
+                print(f"   ⚠️ {id_nome}: Tabela de andamentos não encontrada (link expirado ou bloqueio CAPTCHA).")
+                pasta_atual = os.path.dirname(os.path.abspath(__file__))
+                pag.screenshot(path=os.path.join(pasta_atual, f'DEBUG_ERRO_{id_nome}.png'), full_page=True)
+                return None, None
+            tabela.scroll_into_view_if_needed(timeout=5000)
 
             primeira_linha = tabela.locator('tr').nth(1)
             box = primeira_linha.bounding_box()
@@ -131,9 +136,14 @@ def _raspar_tjrj(pag, id_nome: str, url: str) -> Tuple[Optional[str], Optional[s
     print(f"   📡 {id_nome}: Acessando TJRJ...")
     try:
         pag.goto(url, timeout=60000, wait_until='domcontentloaded')
-        tabela = pag.locator("table:has(th:has-text('Data'))").first
         pag.wait_for_timeout(2000)
-        tabela.scroll_into_view_if_needed()
+        tabela = pag.locator("table:has(th:has-text('Data'))").first
+        if tabela.count() == 0:
+            print(f"   ⚠️ {id_nome}: Tabela de andamentos não encontrada (link expirado ou bloqueio CAPTCHA).")
+            pasta_atual = os.path.dirname(os.path.abspath(__file__))
+            pag.screenshot(path=os.path.join(pasta_atual, f'DEBUG_ERRO_{id_nome}.png'), full_page=True)
+            return None, None
+        tabela.scroll_into_view_if_needed(timeout=5000)
         primeira_linha = tabela.locator('tr').nth(1)
         box = primeira_linha.bounding_box()
         print_path = f'print_{id_nome}.png'
