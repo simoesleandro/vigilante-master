@@ -93,14 +93,27 @@ def _raspar_tjrj(driver, id_nome: str, url: str, numero: Optional[str] = None) -
                 inp = driver.find_element(By.ID, "txtNumProcesso")
                 inp.clear()
                 inp.send_keys(num_limpo)
+                time.sleep(2)
 
                 btn = (
                     driver.find_element(By.ID, "sbmNovo")
                     if driver.find_elements(By.ID, "sbmNovo")
                     else driver.find_element(By.CSS_SELECTOR, "button[type='submit'], input[type='submit']")
                 )
-                btn.click()
-                time.sleep(4)
+                try:
+                    btn.click()
+                    time.sleep(4)
+                except Exception:
+                    try:
+                        driver.switch_to.alert.accept()
+                    except Exception:
+                        pass
+                    time.sleep(3)
+                    try:
+                        btn.click()
+                        time.sleep(4)
+                    except Exception:
+                        pass
 
                 tables = driver.find_elements(By.CSS_SELECTOR, "table:has(th)")
                 has_table = any('Data' in t.text for t in tables) if tables else False
